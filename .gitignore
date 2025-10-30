@@ -1,0 +1,75 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Node / Next build
+node_modules/
+.next/
+out/
+dist/
+.build/
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor config
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing / coverage
+coverage/
+coverage-final.json
+jest-cache/
+
+# Storybook
+storybook-static/
+
+# Misc
+*.log
+*.tmp
+*.temp
+
+# Static build outputs you should not commit
+public/static/
+public/uploads/
+uploads/
+
+# Optional: lockfiles (if you prefer one)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Ignore local JetBrains IDE folders
+.idea/
+
+# Ignore OS-specific metadata
+*.swp
+*.swo
+
+# Ignore build artifacts accidentally committed under .next (safety)
+.next/**
+
+# Ignore generated manifests in .next (safety)
+.next/*.json
+.next/static/
+
+# Ignore any local secrets
+secrets/
