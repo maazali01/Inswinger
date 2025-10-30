@@ -19,13 +19,21 @@ async function create(formData: FormData) {
   const description = formData.get('description') as string;
 
   if (!title) throw new Error('Title is required');
+
+  // Defensive: ensure env vars exist before constructing headers
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY on server');
+  }
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  };
+
   const res = await fetch(`${SUPABASE_URL}/rest/v1/events`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    },
+    headers,
     body: JSON.stringify({
       title,
       start_time: start || null,

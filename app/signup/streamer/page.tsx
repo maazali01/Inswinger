@@ -82,10 +82,10 @@ export default function StreamerSignupPage() {
       .order('price', { ascending: true });
 
     if (data && !error) {
-      setPlans(data.map(plan => ({
+      setPlans(data.map((plan: any) => ({
         ...plan,
         features: Array.isArray(plan.features) ? plan.features as string[] : []
-      })));
+      }) as SubscriptionPlan));
     }
   };
 
