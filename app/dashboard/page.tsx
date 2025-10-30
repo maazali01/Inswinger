@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useCallback, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/auth-context';
@@ -24,14 +25,28 @@ export default function DashboardPage() {
     }
   }, [user, loading, router]);
 
-  useEffect(() => {
-    if (user) {
-      fetchWatchHistory();
-      fetchFollowing();
-    }
-  }, [user]);
+  // wrap fetchFollowing in useCallback
+  const fetchFollowing = useCallback(async () => {
+    const { data } = await supabase
+      .from('followers')
+      .select(`
+        id,
+        streamer:streamers(
+          id,
+          profile:profiles(
+            id,
+            full_name,
+            avatar_url
+          )
+        )
+      `)
+      .eq('user_id', user?.id);
 
-  const fetchWatchHistory = async () => {
+    if (data) setFollowing(data);
+  }, [user?.id]);
+
+  // wrap fetchWatchHistory in useCallback
+  const fetchWatchHistory = useCallback(async () => {
     const { data } = await supabase
       .from('watch_history')
       .select(`
@@ -51,26 +66,15 @@ export default function DashboardPage() {
       .limit(10);
 
     if (data) setWatchHistory(data);
-  };
+  }, [user?.id]);
 
-  const fetchFollowing = async () => {
-    const { data } = await supabase
-      .from('followers')
-      .select(`
-        id,
-        streamer:streamers(
-          id,
-          profile:profiles(
-            id,
-            full_name,
-            avatar_url
-          )
-        )
-      `)
-      .eq('user_id', user?.id);
-
-    if (data) setFollowing(data);
-  };
+  useEffect(() => {
+    if (user) {
+      // call stable callbacks
+      fetchWatchHistory();
+      fetchFollowing();
+    }
+  }, [user, fetchWatchHistory, fetchFollowing]);
 
   // SEO: private dashboard should not be indexed
   useEffect(() => {
@@ -195,10 +199,13 @@ export default function DashboardPage() {
                     <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                       <div className="aspect-video bg-slate-200 rounded-t-lg">
                         {item.stream?.thumbnail_url && (
-                          <img
+                          <Image
                             src={item.stream.thumbnail_url}
                             alt={item.stream.title}
-                            className="w-full h-full object-cover"
+                            width={280}
+                            height={160}
+                            className="object-cover w-full h-full"
+                            priority={false}
                           />
                         )}
                       </div>

@@ -85,10 +85,17 @@ export const metadata: Metadata = {
 
 export const revalidate = 60; // ensure homepage is cached server-side
 
-export default async function HomePage({ searchParams }: { searchParams?: { category?: string; status?: string; q?: string } }) {
-  const category = searchParams?.category || 'All';
+export default async function HomePage({
+  searchParams,
+}: {
+  // searchParams may be provided as a Promise in the app router — accept either
+  searchParams?: Record<string, string | undefined> | Promise<Record<string, string | undefined>>;
+}) {
+  // unwrap the possibly-promised searchParams before accessing properties
+  const sp = (await searchParams) ?? {};
+  const category = sp.category || 'All';
   const status = 'live'; // force only live streams on the homepage
-  const q = (searchParams?.q || '').toLowerCase();
+  const q = (sp.q || '').toLowerCase();
 
   let rows: StreamRow[] = [];
   try {

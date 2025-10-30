@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
@@ -104,12 +104,6 @@ export default function BrowsePage() {
   // NEW: selection state for split view
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchStreams();
-    // reset selection on filter change
-    setSelectedId(null);
-  }, [selectedCategory, statusFilter]);
-
   // SEO: runtime head tags for client page
   useEffect(() => {
     const title = 'Browse Streams – StreamHub';
@@ -145,7 +139,7 @@ export default function BrowsePage() {
     upsertLink('canonical', canonicalHref);
   }, [selectedCategory, statusFilter, search]);
 
-  const fetchStreams = async () => {
+  const fetchStreams = useCallback(async () => {
     setLoading(true);
     setUseMock(false);
     try {
@@ -193,7 +187,13 @@ export default function BrowsePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCategory, statusFilter]);
+
+  useEffect(() => {
+    fetchStreams();
+    // reset selection on filter change
+    setSelectedId(null);
+  }, [fetchStreams, selectedCategory, statusFilter]);
 
   const filteredStreams = streams.filter((stream) =>
     stream.title.toLowerCase().includes(search.toLowerCase())

@@ -1,24 +1,29 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  output: 'export',
-  trailingSlash: true,
-  images: { unoptimized: true },
+/**
+ * Minimal Next.js config for Next 16+ (Turbopack).
+ * - Removes unsupported/invalid top-level options (swcMinify, optimizeFonts).
+ * - Avoids using boolean experimental.serverActions (remove or replace with correct shape).
+ * - Adds an explicit empty `turbopack` config to silence the Turbopack/webpack mismatch warning.
+ *
+ * If you need to continue using a custom webpack config, either:
+ *  - Migrate to Turbopack (preferred), or
+ *  - Start dev with: npm run dev -- --webpack
+ */
+module.exports = {
   reactStrictMode: true,
-  swcMinify: true,            // faster/minified builds
-  optimizeFonts: true,        // reduce font layout shifts
-  experimental: {
-    serverActions: true,
-  },
-  webpack(config) {
-    config.ignoreWarnings = config.ignoreWarnings || [];
-    // Ignore the runtime "Critical dependency: the request of a dependency is an expression"
-    // coming from some @supabase/* compiled files — harmless in our runtime usage.
-    config.ignoreWarnings.push((warning) => {
-      const msg = typeof warning.message === 'string' ? warning.message : '';
-      return msg.includes('Critical dependency: the request of a dependency is an expression');
-    });
-    return config;
-  },
-};
 
-module.exports = nextConfig;
+  // Keep this present to indicate Turbopack usage and silence the warning.
+  // Add properties here if you later migrate configuration to Turbopack.
+  turbopack: {},
+
+  // Allow images from Unsplash (and add more hosts here if needed)
+  images: {
+    domains: ['images.unsplash.com'],
+    // alternatively use remotePatterns for fine-grained control:
+    // remotePatterns: [{ protocol: 'https', hostname: 'images.unsplash.com' }],
+  },
+
+  // If you need to use a custom webpack config, run dev with --webpack or migrate to Turbopack.
+  // webpack: (config, { dev, isServer }) => {
+  //   return config;
+  // },
+};
