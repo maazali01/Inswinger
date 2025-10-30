@@ -12,6 +12,14 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Video, Users, Eye, TrendingUp, Plus, Trash } from 'lucide-react';
 
+// helper to compute a deterministic numeric seed from an id (avoids spread+reduce typing issues)
+function computeSeed(id?: string | number) {
+  const s = String(id ?? '');
+  let sum = 0;
+  for (let i = 0; i < s.length; i++) sum += s.charCodeAt(i);
+  return sum || 1;
+}
+
 export default function StreamerDashboardPage() {
   const router = useRouter();
   const { user, profile, loading } = useAuth();
@@ -153,7 +161,7 @@ export default function StreamerDashboardPage() {
 
   // small helper for compact mock stats
   const makeCompact = (stream: any) => {
-    const seed = Number([...String(stream.id)].reduce((s: number, c: string) => s + c.charCodeAt(0), 0)) || 1;
+    const seed = computeSeed(stream.id);
     return {
       score: `${(seed % 3) + (stream.status === 'live' ? 1 : 0)} - ${((seed + 1) % 4)}`,
       minute: `${30 + (seed % 30)}'`,

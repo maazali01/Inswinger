@@ -20,6 +20,15 @@ export type StreamListItem = {
   slug?: string; // final href if exists (e.g. /watch/slug)
 };
 
+// add small helper to avoid typing issues with spread+reduce on strings
+function computeSeed(id?: string | number) {
+	// convert to string safely, sum char codes
+	const s = String(id ?? '');
+	let sum = 0;
+	for (let i = 0; i < s.length; i++) sum += s.charCodeAt(i);
+	return sum || 1;
+}
+
 export default function StreamsSplitView({ items }: { items: StreamListItem[] }) {
   const initialId = items[0]?.id;
   const [selectedId, setSelectedId] = useState<string | undefined>(initialId);
@@ -32,7 +41,7 @@ export default function StreamsSplitView({ items }: { items: StreamListItem[] })
   // Mock data generator for summary/stats/lineups/form/standings
   const getMockDetails = (it: StreamListItem | undefined) => {
     if (!it) return null;
-    const seed = Number([...it.id].reduce((s, c) => s + c.charCodeAt(0), 0)) || 1;
+    const seed = computeSeed(it.id);
     const home = { name: it.streamerName ?? 'Home', score: (seed % 3) + (it.live ? 1 : 0) };
     const away = { name: it.category ?? 'Away', score: (seed + 1) % 4 };
     const time = `${30 + (seed % 30)}'`;
@@ -94,7 +103,6 @@ export default function StreamsSplitView({ items }: { items: StreamListItem[] })
                       height={64}
                       className="w-28 h-16 object-cover rounded border"
                       loading="lazy"
-                      unoptimized // allow external hosts without next.config changes
                     />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -154,7 +162,6 @@ export default function StreamsSplitView({ items }: { items: StreamListItem[] })
                 height={64}
                 className="w-28 h-16 object-cover rounded border hidden sm:block"
                 loading="lazy"
-                unoptimized
               />
               <div className="min-w-0">
                 <h2 className="text-xl font-semibold text-slate-900">{selected?.title}</h2>

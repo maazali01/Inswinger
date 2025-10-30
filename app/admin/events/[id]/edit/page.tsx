@@ -9,18 +9,27 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 async function fetchFromSupabase(path: string) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      accept: 'application/json',
-    },
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    throw new Error(`Supabase REST error: ${res.status}`);
-  }
-  return res.json();
+	// Defensive: ensure env vars exist before constructing headers (prevents `string | undefined` assignment)
+	if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+		// For admin/edit pages it's better to surface a clear error than to silently send a broken request.
+		throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY for server-side Supabase requests.');
+	}
+
+	const headers: Record<string, string> = {
+		apikey: SUPABASE_ANON_KEY,
+		Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+		accept: 'application/json',
+	};
+
+	const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+		headers,
+		cache: 'no-store',
+	});
+	if (!res.ok) {
+		const text = await res.text().catch(() => '');
+		throw new Error(`Supabase REST error: ${res.status} ${text}`);
+	}
+	return res.json();
 }
 
 export async function generateStaticParams() {
@@ -34,6 +43,11 @@ export async function generateStaticParams() {
 
 async function save(formData: FormData) {
   'use server';
+  // Defensive checks for env vars
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY for server-side Supabase requests.');
+  }
+
   const id = formData.get('id') as string;
   const title = formData.get('title') as string;
   const start = formData.get('start') as string;
@@ -64,8 +78,17 @@ async function save(formData: FormData) {
   redirect('/admin/events');
 }
 
-async function remove(id: string) {
+// Updated remove to accept FormData so it can be used directly as a form action
+async function remove(formData: FormData) {
   'use server';
+  // Defensive checks for env vars
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY for server-side Supabase requests.');
+  }
+
+  const id = (formData.get('id') as string) || '';
+  if (!id) throw new Error('Missing id for delete action');
+
   const res = await fetch(`${SUPABASE_URL}/rest/v1/events?id=eq.${id}`, {
     method: 'DELETE',
     headers: {
@@ -135,8 +158,9 @@ export default async function EditEventPage({ params }: { params: { id: string }
             </div>
           </form>
 
-          {/* Delete form (separate, no nesting) */}
-          <form action={async () => { 'use server'; await remove(params.id); }} className="mt-3">
+          {/* Delete form (uses server action 'remove' and includes hidden id) */}
+          <form action={remove} className="mt-3">
+            <input type="hidden" name="id" value={params.id} />
             <Button type="submit" variant="destructive">Delete Event</Button>
           </form>
         </CardContent>

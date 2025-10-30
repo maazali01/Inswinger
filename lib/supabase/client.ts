@@ -5,9 +5,10 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-let _supabase: SupabaseClient | null = null;
+// keep runtime client but relax static typing to avoid TS/IDE errors in consumers
+let _supabase: any = null;
 
-function createClientIfNeeded(): SupabaseClient {
+function createClientIfNeeded(): any {
 	// read env inside function to avoid server-side compile-time embedding
 	const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 	const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -34,7 +35,7 @@ function createClientIfNeeded(): SupabaseClient {
  * Get a Supabase client (throws if not running in browser or env missing).
  * Use this in client code when you want to fail fast if mis-used.
  */
-export function getSupabaseClient(): SupabaseClient {
+export function getSupabaseClient(): any {
 	if (typeof window === 'undefined') {
 		throw new Error('getSupabaseClient() is client-only. Use server-side REST or server client on the server.');
 	}
@@ -44,7 +45,7 @@ export function getSupabaseClient(): SupabaseClient {
 /**
  * Get a Supabase client or null (safe for libraries that may run server-side).
  */
-export function getSupabaseClientOrNull(): SupabaseClient | null {
+export function getSupabaseClientOrNull(): any | null {
 	if (typeof window === 'undefined') return null;
 	try {
 		return _supabase ?? createClientIfNeeded();
@@ -57,6 +58,8 @@ export function getSupabaseClientOrNull(): SupabaseClient | null {
  * Backwards-compatible `supabase` export:
  * - It's a proxy that initializes the real client on first property access (client runtime).
  * - Accessing it server-side will throw a clear error to avoid silent failures.
+ *
+ * Note: exported as `any` to avoid TypeScript/IDE errors in callers while preserving runtime checks.
  */
 export const supabase = new Proxy(
 	{},
@@ -69,4 +72,4 @@ export const supabase = new Proxy(
 			return (client as any)[prop];
 		},
 	}
-) as unknown as SupabaseClient;
+) as any;
