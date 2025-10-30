@@ -73,3 +73,8 @@ uploads/
 
 # Ignore any local secrets
 secrets/
+
+# Ignore Supabase migration files (do not push DB migration SQL files)
+# Keeps local migrations out of the repo; adjust if you intend to store migrations in VCS.
+supabase/migrations/
+supabase/migrations/**

@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase/client';
 import { Navbar } from '@/components/layout/navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash, X } from 'lucide-react';
+import { Plus, Trash } from 'lucide-react';
 import Link from 'next/link';
 
 export default function OverlaysListPage() {
@@ -41,7 +41,7 @@ export default function OverlaysListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen p-6 bg-slate-50">
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -86,6 +86,7 @@ export default function OverlaysListPage() {
                 </div>
 
                 <div className="flex gap-2">
+                  {/* CHANGED: remove View/Edit links — only keep Delete */}
                   <Button variant="destructive" size="sm">
                     <Trash className="w-4 h-4 mr-1" />
                     Delete
