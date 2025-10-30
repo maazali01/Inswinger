@@ -1,19 +1,32 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Metadata } from 'next';
 import { Navbar } from '@/components/layout/navbar';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-/**
- * Server page that aggregates upcoming sports events and news articles
- * from public RSS/JSON endpoints and displays a responsive events page.
- *
- * Notes:
- * - This is a simple aggregator for demo/dev purposes and does NOT
- *   replace proper APIs or scraping pipelines.
- * - Feeds/endpoints chosen are public RSS/JSON endpoints (ESPN + BBC + The Guardian).
- * - Parsing is intentionally lightweight and defensive.
- */
+/* ======= Lightweight types used in this page ======= */
+type ArticleItem = {
+  id: string;
+  title: string;
+  link?: string;
+  pubDate?: string;
+  snippet?: string;
+  thumbnail?: string;
+  source?: string;
+};
+
+type EventItem = {
+  id: string;
+  title: string;
+  link?: string;
+  start?: string; // ISO
+  league?: string;
+  sport_type?: string;
+  thumbnail?: string;
+  source?: string;
+};
+/* =================================================== */
 
 export const metadata: Metadata = {
   title: 'Events & Sports News – Inswinger',
@@ -38,37 +51,37 @@ export const revalidate = 600; // cache events page for 10 minutes
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-async function fetchFromSupabase(path: string) {
+async function fetchFromSupabase(path: string): Promise<any[]> {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return [];
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: {
       apikey: SUPABASE_ANON_KEY,
       Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       accept: 'application/json',
     },
-    next: { revalidate: 600 }, // use ISR instead of no-store
+    next: { revalidate: 600 },
   });
   if (!res.ok) {
-    throw new Error(`Supabase REST error: ${res.status}`);
+    const text = await res.text().catch(() => '');
+    throw new Error(`Supabase REST error: ${res.status} ${text}`);
   }
   return res.json();
 }
 
-async function fetchJson(url: string) {
-  const res = await fetch(url, { next: { revalidate: 600 } }); // cache external JSON for 10m
+async function fetchJson(url: string): Promise<any> {
+  const res = await fetch(url, { next: { revalidate: 600 } });
   if (!res.ok) throw new Error(`Failed to fetch ${url} (${res.status})`);
   return res.json();
 }
 
-async function fetchText(url: string) {
-  const res = await fetch(url, { next: { revalidate: 3600 } }); // RSS can be cached longer
+async function fetchText(url: string): Promise<string> {
+  const res = await fetch(url, { next: { revalidate: 3600 } });
   if (!res.ok) throw new Error(`Failed to fetch ${url} (${res.status})`);
   return res.text();
 }
 
-// lightweight RSS parser for server-side use: extracts <item> blocks with title/link/pubDate/description/enclosure
 function parseRss(xml: string, source = 'rss'): ArticleItem[] {
   try {
-    // normalize
     const items: ArticleItem[] = [];
     const itemRegex = /<item\b[^>]*>([\s\S]*?)<\/item>/gi;
     let match;
@@ -86,10 +99,7 @@ function parseRss(xml: string, source = 'rss'): ArticleItem[] {
       const link = linkMatch ? linkMatch[1].trim() : guidMatch ? guidMatch[1].trim() : undefined;
       const pubDate = pubMatch ? new Date(pubMatch[1].trim()).toISOString() : undefined;
       let snippet = descMatch ? descMatch[1].trim() : undefined;
-      if (snippet) {
-        // strip HTML tags lightly for snippet
-        snippet = snippet.replace(/<\/?[^>]+(>|$)/g, '').slice(0, 300);
-      }
+      if (snippet) snippet = snippet.replace(/<\/?[^>]+(>|$)/g, '').slice(0, 300);
       const thumbnail = enclosureMatch ? enclosureMatch[1] : undefined;
 
       items.push({
@@ -103,40 +113,31 @@ function parseRss(xml: string, source = 'rss'): ArticleItem[] {
       });
     }
     return items;
-  } catch (e) {
+  } catch {
     return [];
   }
 }
 
-// add: sanitize title helper (strip CDATA, trim quotes, decode common entities)
 function sanitizeTitle(raw?: string | null) {
-	 if (!raw) return '';
-	 let t = String(raw).trim();
-
-	 // unwrap CDATA if present
-	 t = t.replace(/<!\[CDATA\[(.*?)\]\]>/i, '$1');
-
-	 // remove surrounding quotes/apostrophes (straight and curly)
-	 t = t.replace(/^[\u0022\u0027\u2018\u2019\u201C\u201D]+|[\u0022\u0027\u2018\u2019\u201C\u201D]+$/g, '').trim();
-
-	 // decode a few common HTML entities
-	 const entities: Record<string, string> = {
-		 '&amp;': '&',
-		 '&lt;': '<',
-		 '&gt;': '>',
-		 '&quot;': '"',
-		 '&#39;': "'",
-		 '&#8217;': "'",
-		 '&#8216;': "'",
-		 '&#8220;': '"',
-		 '&#8221;': '"',
-	 };
-	 t = t.replace(/&[#A-Za-z0-9]+;/g, (m) => entities[m] ?? m);
-
-	 return t;
+  if (!raw) return '';
+  let t = String(raw).trim();
+  t = t.replace(/<!\[CDATA\[(.*?)\]\]>/i, '$1');
+  t = t.replace(/^[\u0022\u0027\u2018\u2019\u201C\u201D]+|[\u0022\u0027\u2018\u2019\u201C\u201D]+$/g, '').trim();
+  const entities: Record<string, string> = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&#8217;': "'",
+    '&#8216;': "'",
+    '&#8220;': '"',
+    '&#8221;': '"',
+  };
+  t = t.replace(/&[#A-Za-z0-9]+;/g, (m) => entities[m] ?? m);
+  return t;
 }
 
-// Add: readable date formatter
 function formatEventDate(iso?: string) {
   if (!iso) return 'Date TBA';
   try {
@@ -150,25 +151,23 @@ function formatEventDate(iso?: string) {
       minute: '2-digit',
     });
   } catch {
-    return new Date(iso as string).toLocaleString();
+    return 'Date TBA';
   }
 }
 
-// parse ESPN scoreboard JSON for upcoming events (NFL example). The structure varies; be defensive.
-function parseEspnScoreboardJson(json: any, sportLabel = 'ESPN') : EventItem[] {
+function parseEspnScoreboardJson(json: any, sportLabel = 'ESPN'): EventItem[] {
   try {
     const events: EventItem[] = [];
-    const competitions = json?.events || json?.competitions || [];
-    // Some ESPN endpoints have events array, others nested; normalize
-    const arr = Array.isArray(competitions) ? competitions : [];
+    const arr = Array.isArray(json?.events) ? json.events : Array.isArray(json?.competitions) ? json.competitions : [];
     for (const ev of arr) {
-      // competition may contain competitors, date, name
-      const id = ev?.id || ev?.uid || (ev.name ? ev.name.slice(0, 64) : Math.random().toString(36));
-      const title = ev?.name || ev?.shortName || [ev?.competitions?.[0]?.competitors?.map((c:any)=>c?.team?.displayName).join(' vs ')].join('') || 'Event';
-      const link = Array.isArray(ev?.links) && ev?.links[0]?.href ? ev.links[0].href : ev?.links?.web?.href || undefined;
-      const date = ev?.date || ev?.startDate || ev?.competitions?.[0]?.date || undefined;
-      const league = json?.sport?.name || ev?.league?.name || undefined;
-      const thumbnail = ev?.competitions?.[0]?.broadcast?.network?.logo || ev?.competitions?.[0]?.competitors?.[0]?.team?.logo || undefined;
+      const id = ev?.id ?? ev?.uid ?? (ev?.name ? String(ev.name).slice(0, 64) : Math.random().toString(36));
+      const competitors = ev?.competitions?.[0]?.competitors ?? ev?.competitions ?? [];
+      const teamNames = Array.isArray(competitors) ? competitors.map((c:any) => c?.team?.displayName || c?.displayName).filter(Boolean).join(' vs ') : ev?.name;
+      const title = ev?.name || teamNames || ev?.shortName || 'Event';
+      const link = (Array.isArray(ev?.links) && ev.links[0]?.href) ? ev.links[0].href : ev?.links?.web?.href;
+      const date = ev?.date ?? ev?.startDate ?? ev?.competitions?.[0]?.date;
+      const league = json?.sport?.name ?? ev?.league?.name;
+      const thumbnail = ev?.competitions?.[0]?.broadcast?.network?.logo ?? ev?.competitions?.[0]?.competitors?.[0]?.team?.logo;
 
       events.push({
         id: String(id),
@@ -181,12 +180,12 @@ function parseEspnScoreboardJson(json: any, sportLabel = 'ESPN') : EventItem[] {
       });
     }
     return events;
-  } catch (e) {
+  } catch {
     return [];
   }
 }
 
-export default async function EventsPage() {
+export default async function EventsPage(): Promise<JSX.Element> {
   const rssFeeds = [
     { url: 'https://feeds.bbci.co.uk/sport/football/rss.xml', source: 'BBC Sport - Football' },
     { url: 'https://www.theguardian.com/uk/sport/rss', source: 'The Guardian - Sport' },
@@ -198,17 +197,15 @@ export default async function EventsPage() {
     { url: 'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard', source: 'ESPN Soccer (EPL)' },
   ];
 
-  // NEW: fetch custom events from database
   const customEventsPromise = fetchFromSupabase(
     'events?select=id,title,start_time,sport_type,event_url,thumbnail_url,description&order=start_time.asc&limit=200'
   ).catch(() => []);
 
-  // perform fetches in parallel
   const rssPromises = rssFeeds.map(async (f) => {
     try {
       const txt = await fetchText(f.url);
       return parseRss(txt, f.source);
-    } catch (e) {
+    } catch {
       return [] as ArticleItem[];
     }
   });
@@ -217,7 +214,7 @@ export default async function EventsPage() {
     try {
       const json = await fetchJson(e.url);
       return parseEspnScoreboardJson(json, e.source);
-    } catch (err) {
+    } catch {
       return [] as EventItem[];
     }
   });
@@ -228,18 +225,15 @@ export default async function EventsPage() {
     customEventsPromise,
   ]);
 
-  // flatten lists
   const articles: ArticleItem[] = ([] as ArticleItem[]).concat(...rssResults).slice(0, 80);
   const events: EventItem[] = ([] as EventItem[]).concat(...espnResults).filter(ev => !!ev.start).slice(0, 80);
 
-  // sort events by start date ascending (upcoming first)
   events.sort((a, b) => {
     const da = a.start ? new Date(a.start).getTime() : 0;
     const db = b.start ? new Date(b.start).getTime() : 0;
     return da - db;
   });
 
-  // simple dedupe by link/title
   const seenLinks = new Set<string>();
   const dedupArticles = articles.filter((it) => {
     const key = (it.link || it.title || '').toString();
@@ -249,7 +243,6 @@ export default async function EventsPage() {
     return true;
   }).slice(0, 20);
 
-  // map custom events from DB to EventItem format
   const customEvents: EventItem[] = Array.isArray(customEventsRows) ? customEventsRows.map((e: any) => ({
     id: String(e.id),
     title: e.title ?? 'Event',
@@ -260,7 +253,6 @@ export default async function EventsPage() {
     source: 'Inswinger (Custom)',
   })).filter(ev => !!ev.start) : [];
 
-  // NEW: merge + keep only upcoming (>= now) and sort ascending so the closest date is on top
   const now = Date.now();
   const allEvents: EventItem[] = [...events, ...customEvents]
     .filter(ev => ev.start && new Date(ev.start).getTime() >= now)
@@ -275,7 +267,6 @@ export default async function EventsPage() {
           <p className="text-slate-600">Aggregated from public sources and custom StreamHub events.</p>
         </div>
 
-        {/* Only Events column: single column layout */}
         <section className="grid grid-cols-1 gap-8">
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -294,8 +285,14 @@ export default async function EventsPage() {
                 <article key={ev.id} className="bg-white rounded-lg shadow-sm p-4 sm:p-6 flex gap-4">
                   <div className="w-24 h-16 flex-shrink-0 overflow-hidden rounded-md bg-slate-100">
                     {ev.thumbnail ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={ev.thumbnail} alt={sanitizeTitle(ev.title)} loading="lazy" className="w-full h-full object-cover" />
+                      <Image
+                        src={ev.thumbnail}
+                        alt={sanitizeTitle(ev.title)}
+                        width={96}
+                        height={64}
+                        className="object-cover"
+                        unoptimized // allow external hosts without next.config update
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
                         {ev.sport_type ?? ev.source ?? 'Event'}

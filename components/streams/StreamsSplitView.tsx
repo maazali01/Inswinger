@@ -94,6 +94,7 @@ export default function StreamsSplitView({ items }: { items: StreamListItem[] })
                       height={64}
                       className="w-28 h-16 object-cover rounded border"
                       loading="lazy"
+                      unoptimized // allow external hosts without next.config changes
                     />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -146,7 +147,6 @@ export default function StreamsSplitView({ items }: { items: StreamListItem[] })
             </div>
 
             <div className="mt-3 flex items-start gap-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <Image
                 src={selected?.thumbnail || '/placeholder.png'}
                 alt={selected?.title ?? 'thumbnail'}
@@ -154,6 +154,7 @@ export default function StreamsSplitView({ items }: { items: StreamListItem[] })
                 height={64}
                 className="w-28 h-16 object-cover rounded border hidden sm:block"
                 loading="lazy"
+                unoptimized
               />
               <div className="min-w-0">
                 <h2 className="text-xl font-semibold text-slate-900">{selected?.title}</h2>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/auth-context';
@@ -22,22 +22,28 @@ export default function StreamerDashboardPage() {
     totalFollowers: 0,
     totalStreams: 0,
     liveStreams: 0,
+    eventsCount: 0,      // total events in the DB (admin metric)
+    allStreamsCount: 0,  // total streams in the DB (admin metric)
   });
 
-  useEffect(() => {
-    if (!loading && (!user || profile?.role !== 'streamer')) {
-      router.push('/dashboard');
+  // fetch global admin counts: events and all streams
+  const fetchCounts = useCallback(async () => {
+    try {
+      // use head + exact count to avoid returning all rows
+      const eventsRes = await supabase.from('events').select('id', { count: 'exact', head: true });
+      const streamsRes = await supabase.from('streams').select('id', { count: 'exact', head: true });
+      setStats((prev) => ({
+        ...prev,
+        eventsCount: eventsRes.count ?? 0,
+        allStreamsCount: streamsRes.count ?? 0,
+      }));
+    } catch {
+      // ignore errors; keep defaults
     }
-  }, [user, profile, loading, router]);
+  }, []);
 
-  useEffect(() => {
-    if (user && profile?.role === 'streamer') {
-      fetchStreamerData();
-      fetchStreams();
-    }
-  }, [user, profile]);
-
-  const fetchStreamerData = async () => {
+  const fetchStreamerData = useCallback(async () => {
+    if (!user?.id) return;
     const { data } = await supabase
       .from('streamers')
       .select(`
@@ -50,7 +56,7 @@ export default function StreamerDashboardPage() {
         subscription_status,
         subscription_plan:subscription_plans(name, price)
       `)
-      .eq('profile_id', user?.id)
+      .eq('profile_id', user.id)
       .maybeSingle();
 
     if (data) {
@@ -61,13 +67,14 @@ export default function StreamerDashboardPage() {
         totalFollowers: data.total_followers || 0,
       }));
     }
-  };
+  }, [user?.id]);
 
-  const fetchStreams = async () => {
+  const fetchStreams = useCallback(async () => {
+    if (!user?.id) return;
     const { data: streamer } = await supabase
       .from('streamers')
       .select('id')
-      .eq('profile_id', user?.id)
+      .eq('profile_id', user.id)
       .maybeSingle();
 
     if (streamer) {
@@ -82,11 +89,25 @@ export default function StreamerDashboardPage() {
         setStats((prev) => ({
           ...prev,
           totalStreams: data.length,
-          liveStreams: data.filter((s) => s.status === 'live').length,
+          liveStreams: data.filter((s: any) => s.status === 'live').length,
         }));
       }
     }
-  };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!loading && (!user || profile?.role !== 'streamer')) {
+      router.push('/dashboard');
+    }
+  }, [user, profile, loading, router]);
+
+  useEffect(() => {
+    if (user && profile?.role === 'streamer') {
+      fetchStreamerData();
+      fetchStreams();
+      fetchCounts();
+    }
+  }, [user, profile, fetchStreamerData, fetchStreams]);
 
   const deleteStream = async (id: string) => {
     if (!confirm('Delete this stream? This action cannot be undone.')) return;
@@ -196,14 +217,15 @@ export default function StreamerDashboardPage() {
             </CardContent>
           </Card>
 
+          {/* Replaced: Followers -> Events count (admin metric) */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Followers</CardTitle>
+              <CardTitle className="text-sm font-medium">Events</CardTitle>
               <Users className="w-4 h-4 text-slate-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalFollowers.toLocaleString()}</div>
-              <p className="text-xs text-slate-600 mt-1">Total followers</p>
+              <div className="text-2xl font-bold">{(stats.eventsCount ?? 0).toLocaleString()}</div>
+              <p className="text-xs text-slate-600 mt-1">Total events</p>
             </CardContent>
           </Card>
 
@@ -214,18 +236,19 @@ export default function StreamerDashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalStreams}</div>
-              <p className="text-xs text-slate-600 mt-1">All time</p>
+              <p className="text-xs text-slate-600 mt-1">Your streams</p>
             </CardContent>
           </Card>
 
+          {/* Replaced: Live Now -> All Streams (global streams count) */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Live Now</CardTitle>
+              <CardTitle className="text-sm font-medium">All Streams</CardTitle>
               <TrendingUp className="w-4 h-4 text-slate-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.liveStreams}</div>
-              <p className="text-xs text-slate-600 mt-1">Active streams</p>
+              <div className="text-2xl font-bold">{(stats.allStreamsCount ?? 0).toLocaleString()}</div>
+              <p className="text-xs text-slate-600 mt-1">All streams</p>
             </CardContent>
           </Card>
         </div>
@@ -288,9 +311,9 @@ export default function StreamerDashboardPage() {
                           <div className="flex items-center gap-4 text-sm text-slate-600">
                             <div className="flex items-center gap-1">
                               <Eye className="w-4 h-4" />
-                              {stream.view_count.toLocaleString()} views
+                              {(stream.view_count ?? 0).toLocaleString()} views
                             </div>
-                            <div>{new Date(stream.created_at).toLocaleDateString()}</div>
+                            <div>{stream.created_at ? new Date(stream.created_at).toLocaleDateString() : ''}</div>
                           </div>
                         </div>
 
