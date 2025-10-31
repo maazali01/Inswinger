@@ -30,6 +30,24 @@ async function fetchFromSupabase(path: string) {
 	return res.json();
 }
 
+// helper used when generating static params to produce simple, safe slugs
+function cleanForStaticParam(s: unknown): string | null {
+	if (s === null || s === undefined) return null;
+	let t = String(s).trim();
+	if (!t) return null;
+	// remove leading /blog/ or leading slashes
+	t = t.replace(/^\/?blog\/?/i, '').replace(/^\/+/, '');
+	// decode if possible, fallback to raw
+	try {
+		t = decodeURIComponent(t);
+	} catch {}
+	// discard empty or obviously malformed values
+	if (!t) return null;
+	// avoid pushing variants that still contain a slash (keep only slug part)
+	if (t.includes('/')) t = t.split('/').pop() ?? t;
+	return t || null;
+}
+
 // Generate static params so "output: export" doesn't fail during export
 export async function generateStaticParams() {
 	if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return [];
@@ -37,87 +55,39 @@ export async function generateStaticParams() {
 	if (!Array.isArray(rows)) return [];
 
 	const variants: { slug: string }[] = [];
-	function pushIfValid(s: string | null | undefined) {
-		if (!s) return;
-		const t = String(s).trim();
-		if (!t) return;
-		variants.push({ slug: t });
-	}
+	const seen = new Set<string>();
 
 	for (const r of rows) {
-		if (!r || typeof r.slug !== 'string' || r.slug.length === 0) continue;
-		const raw = r.slug.trim();
-
-		// common encodings
-		const encoded = encodeURIComponent(raw); // standard encoding
-		const doubleEncoded = encodeURIComponent(encoded); // double-encoded
-		const plus = raw.replace(/\s+/g, '+'); // spaces as plus
-		const encodedPlus = encodeURIComponent(plus);
-
-		// prefixed forms Next sometimes requests during export
-		const prefixed = `/blog/${raw}`;
-		const prefixedEncoded = `/blog/${encoded}`;
-		const prefixedDouble = `/blog/${doubleEncoded}`;
-		const prefixedPlus = `/blog/${plus}`;
-		const prefixedEncodedPlus = `/blog/${encodedPlus}`;
-
-		// leading slash variants (some systems include leading slash)
-		const leadRaw = `/${raw}`;
-		const leadEncoded = `/${encoded}`;
-
-		// push a broad set of variants
-		pushIfValid(raw);
-		pushIfValid(encoded);
-		pushIfValid(doubleEncoded);
-		pushIfValid(plus);
-		pushIfValid(encodedPlus);
-
-		pushIfValid(prefixed);
-		pushIfValid(prefixedEncoded);
-		pushIfValid(prefixedDouble);
-		pushIfValid(prefixedPlus);
-		pushIfValid(prefixedEncodedPlus);
-
-		pushIfValid(leadRaw);
-		pushIfValid(leadEncoded);
-
-		// truncated at common separators (colon, dash, pipe, parentheses)
-		const truncated = raw.split(/[:|—–\-\(|\)]/)[0].trim();
-		if (truncated && truncated !== raw) {
-			pushIfValid(truncated);
-			pushIfValid(encodeURIComponent(truncated));
-			pushIfValid(`/blog/${encodeURIComponent(truncated)}`);
-			// also first N words
-			const words = truncated.split(/\s+/).slice(0, 5).join(' ').trim();
-			if (words && words !== truncated) {
-				pushIfValid(words);
-				pushIfValid(encodeURIComponent(words));
-				pushIfValid(`/blog/${encodeURIComponent(words)}`);
-			}
+		const raw = r?.slug ?? null;
+		const cleaned = cleanForStaticParam(raw);
+		if (cleaned && !seen.has(cleaned)) {
+			seen.add(cleaned);
+			variants.push({ slug: cleaned });
 		}
-
-		// first N words variant (useful when links use shorter titles)
-		const firstWords = raw.split(/\s+/).slice(0, 5).join(' ').trim();
-		if (firstWords && firstWords !== raw) {
-			pushIfValid(firstWords);
-			pushIfValid(encodeURIComponent(firstWords));
-			pushIfValid(`/blog/${encodeURIComponent(firstWords)}`);
+		// also consider first N words as additional slug variants (safe)
+		if (cleaned) {
+			const firstWords = cleaned.split(/\s+/).slice(0, 5).join(' ').trim();
+			if (firstWords && !seen.has(firstWords)) {
+				seen.add(firstWords);
+				variants.push({ slug: firstWords });
+			}
 		}
 	}
 
-	// dedupe and return
-	const seen = new Set<string>();
-	return variants.filter(v => {
-		if (seen.has(v.slug)) return false;
-		seen.add(v.slug);
-		return true;
-	});
+	return variants;
 }
 
-function normalizeIncomingSlug(paramSlug: string) {
-	// Strip leading "/blog/" or "blog/" if present, then decode
-	const withoutPrefix = paramSlug.replace(/^\/?blog\/?/i, '');
-	return decodeURIComponent(withoutPrefix);
+// Normalize incoming slug safely (coerce to string first)
+function normalizeIncomingSlug(paramSlug: unknown) {
+	// coerce to string, strip leading "/blog/" or "blog/" if present, then decode
+	const raw = String(paramSlug ?? '').trim();
+	const withoutPrefix = raw.replace(/^\/?blog\/?/i, '');
+	try {
+		return decodeURIComponent(withoutPrefix);
+	} catch {
+		// if decoding fails, return the raw cleaned string
+		return withoutPrefix;
+	}
 }
 
 // add: same sanitizeTitle helper to clean CDATA/quotes/entities for blog titles
@@ -151,7 +121,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 	);
 	const data = Array.isArray(rows) && rows[0] ? rows[0] : null;
 	if (!data) return { title: 'Post not found' };
-	const canonical = `${APP_URL}/blog/${encodeURIComponent(params.slug)}`;
+	// use the normalized raw slug for canonical URLs (avoid prefixed/encoded params.slug)
+	const canonical = `${APP_URL.replace(/\/$/, '')}/blog/${encodeURIComponent(rawSlug)}`;
 
 	return {
 		title: sanitizeTitle(data.title),
