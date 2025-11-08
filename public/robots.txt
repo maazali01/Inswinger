@@ -1,0 +1,19 @@
+# Allow all crawlers
+User-agent: *
+Allow: /
+Allow: /home
+Allow: /blogs
+Allow: /events
+
+# Disallow admin and streamer areas
+Disallow: /admin/
+Disallow: /streamer/
+Disallow: /verification-upload
+Disallow: /verification-pending
+Disallow: /subscription-plans
+
+# Crawl-delay
+Crawl-delay: 1
+
+# Sitemap location
+Sitemap: https://localhost:5173/sitemap.xml
