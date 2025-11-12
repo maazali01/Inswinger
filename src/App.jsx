@@ -5,6 +5,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 import ErrorBoundary from './components/ErrorBoundary';
 
+// Public Pages
+import LandingPage from './pages/LandingPage';
+
 // Auth Pages
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -42,6 +45,7 @@ function App() {
               <Navbar />
               <Routes>
                 {/* Public Routes */}
+                <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
                 <Route path="/verification-pending" element={<VerificationPending />} />
@@ -181,9 +185,8 @@ function App() {
                 {/* Sitemap */}
                 <Route path="/sitemap.xml" element={<Sitemap />} />
 
-                {/* Default Route */}
-                <Route path="/" element={<Navigate to="/login" replace />} />
-                <Route path="*" element={<Navigate to="/login" replace />} />
+                {/* Fallback - redirect unknown routes to landing page */}
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </div>
           </AuthProvider>

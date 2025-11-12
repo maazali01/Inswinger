@@ -150,10 +150,10 @@ const Login = () => {
                   Create an account
                 </Link>
                 <Link
-                  to="/login"
+                  to="/"
                   className="text-sm text-gray-400 hover:text-gray-300"
                 >
-                  Need help?
+                  ← Back to Home
                 </Link>
               </div>
 

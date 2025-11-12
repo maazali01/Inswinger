@@ -193,11 +193,18 @@ const Signup = () => {
               </div>
             </form>
 
-            <div className="mt-6 text-xs text-gray-400 text-center">
-              Already registered?{' '}
-              <Link to="/login" className="text-blue-400 hover:text-blue-300">
-                Sign in
-              </Link>
+            <div className="mt-6 text-xs text-gray-400 text-center space-y-2">
+              <div>
+                Already registered?{' '}
+                <Link to="/login" className="text-blue-400 hover:text-blue-300">
+                  Sign in
+                </Link>
+              </div>
+              <div>
+                <Link to="/" className="text-gray-500 hover:text-gray-300">
+                  ← Back to Home
+                </Link>
+              </div>
             </div>
           </div>
         </div>

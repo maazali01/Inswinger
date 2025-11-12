@@ -44,7 +44,7 @@ export default function UserManagement() {
       setDeletingId(id);
       
       // Call the delete_user function which deletes from both auth.users and public.users
-      const { data, error } = await supabase.rpc('delete_user', { user_id: id });
+      const { error } = await supabase.rpc('delete_user', { user_id: id });
       
       if (error) throw error;
       

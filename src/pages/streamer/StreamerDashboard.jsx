@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Sidebar from '../../components/Sidebar';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -69,7 +69,7 @@ const StreamerDashboard = () => {
     }
   };
 
-  const isStreamLive = (s) => {
+  const isStreamLive = useCallback((s) => {
     if (typeof s.is_live === 'boolean') return s.is_live;
     const start = s.stream_types?.start_time ? new Date(s.stream_types.start_time) : null;
     const end = s.stream_types?.end_time ? new Date(s.stream_types.end_time) : null;
@@ -77,14 +77,14 @@ const StreamerDashboard = () => {
     if (start && end) return now >= start && now <= end;
     if (start) return now >= start;
     return false;
-  };
+  }, []);
 
-  const streamStatus = (s) => {
+  const streamStatus = useCallback((s) => {
     if (isStreamLive(s)) return 'live';
     const start = s.stream_types?.start_time ? new Date(s.stream_types.start_time) : null;
     if (start && start > new Date()) return 'scheduled';
     return 'offline';
-  };
+  }, [isStreamLive]);
 
   const uniqueSports = useMemo(() => {
     const set = new Set();
@@ -107,7 +107,7 @@ const StreamerDashboard = () => {
       const matchesStatus = statusFilter === 'all' || status === statusFilter;
       return matchesSearch && matchesSport && matchesStatus;
     });
-  }, [streams, searchTerm, sportFilter, statusFilter]);
+  }, [streams, searchTerm, sportFilter, statusFilter, streamStatus]);
 
   const handleDelete = async (streamId) => {
     if (!confirm('Are you sure you want to delete this stream?')) return;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -14,20 +14,7 @@ const StreamView = () => {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
 
-  useEffect(() => {
-    fetchStream();
-    fetchMessages();
-    const cleanup = subscribeToMessages();
-    return () => {
-      if (typeof cleanup === 'function') cleanup();
-    };
-  }, [id]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const fetchStream = async () => {
+  const fetchStream = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('streams')
@@ -46,9 +33,9 @@ const StreamView = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('chat_messages')
@@ -65,9 +52,9 @@ const StreamView = () => {
     } catch (error) {
       console.error('Error fetching messages:', error);
     }
-  };
+  }, [id]);
 
-  const subscribeToMessages = () => {
+  const subscribeToMessages = useCallback(() => {
     const channel = supabase
       .channel(`chat:${id}`)
       .on(
@@ -79,34 +66,35 @@ const StreamView = () => {
           filter: `stream_id=eq.${id}`,
         },
         async (payload) => {
-          // Fetch user info for new message
-          const { data: userData, error: userError } = await supabase
+          // Fetch the user name for the new message
+          const { data: userData } = await supabase
             .from('users')
             .select('name')
             .eq('id', payload.new.user_id)
             .single();
 
-          if (userError) {
-            console.error('Error fetching user data:', userError);
-          }
-
-          // Add new message with user data
-          const newMsg = {
-            ...payload.new,
-            users: userData || { name: 'Unknown User' }
-          };
-
-          setMessages((prev) => [...prev, newMsg]);
+          setMessages((prev) => [...prev, { ...payload.new, users: userData }]);
         }
       )
-      .subscribe((status) => {
-        console.log('Chat subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      channel.unsubscribe();
     };
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchStream();
+    fetchMessages();
+    const cleanup = subscribeToMessages();
+    return () => {
+      if (typeof cleanup === 'function') cleanup();
+    };
+  }, [id, fetchStream, fetchMessages, subscribeToMessages]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

@@ -1,0 +1,30 @@
+{
+  "name": "Inswinger+ Sports Streaming",
+  "short_name": "Inswinger+",
+  "description": "Watch live sports streams including football, cricket, basketball and more",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#1e40af",
+  "orientation": "any",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "entertainment", "streaming"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Watch Live",
+      "short_name": "Live",
+      "description": "View live sports streams",
+      "url": "/home",
+      "icons": []
+    }
+  ]
+}

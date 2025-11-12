@@ -40,7 +40,9 @@ export default function Sidebar({ className = '' }) {
         Object.keys(sessionStorage).forEach((k) => {
           if (k.startsWith('sb-') || k.startsWith('supabase')) sessionStorage.removeItem(k);
         });
-      } catch (e) {}
+      } catch {
+        // Silent catch - storage access might be blocked
+      }
       navigate('/login', { replace: true });
       setSigningOut(false);
     }
