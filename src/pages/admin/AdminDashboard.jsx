@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import Sidebar from '../../components/Sidebar';
 import { supabase } from '../../lib/supabase';
 import { MdPeople, MdVerified, MdPending, MdVideoLibrary, MdEvent, MdArticle, MdTrendingUp, MdPersonAdd } from 'react-icons/md';
+import { useToast } from '../../components/ToastContainer'; // add import
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -16,10 +18,30 @@ const AdminDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState([]);
+  const toast = useToast(); // new
+
+  // Payment details (runtime only, stored in sessionStorage)
+  const PAYMENT_KEY = 'payment_details';
+  const [paymentEditingOpen, setPaymentEditingOpen] = useState(false);
+  const [paymentDetails, setPaymentDetails] = useState({
+    accountName: 'Inswinger+ Admin',
+    accountNumber: '092393298984332',
+    bank: 'Meezan Bank Limited',
+  });
 
   useEffect(() => {
     fetchStats();
     fetchRecentActivity();
+
+    // load runtime payment details from sessionStorage if present
+    try {
+      const stored = sessionStorage.getItem(PAYMENT_KEY);
+      if (stored) {
+        setPaymentDetails(JSON.parse(stored));
+      }
+    } catch {
+      // ignore
+    }
   }, []);
 
   const fetchStats = async () => {
@@ -86,6 +108,31 @@ const AdminDashboard = () => {
     }
   };
 
+  const savePaymentDetails = () => {
+    try {
+      sessionStorage.setItem(PAYMENT_KEY, JSON.stringify(paymentDetails));
+      toast.success('Payment details updated.');
+      setPaymentEditingOpen(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to save payment details');
+    }
+  };
+
+  const clearPaymentDetails = () => {
+    try {
+      sessionStorage.removeItem(PAYMENT_KEY);
+      setPaymentDetails({
+        accountName: 'Inswinger+ Admin',
+        accountNumber: '092393298984332',
+        bank: 'Meezan Bank Limited',
+      });
+      toast.success('Runtime payment details cleared');
+    } catch {
+      toast.error('Failed to clear payment details');
+    }
+  };
+
   const statCards = [
     { label: 'Total Users', value: stats.totalUsers, icon: MdPeople, color: 'text-blue-400' },
     { label: 'Verified Streamers', value: stats.verifiedStreamers, icon: MdVerified, color: 'text-green-400' },
@@ -101,164 +148,223 @@ const AdminDashboard = () => {
     return (
       <div className="min-h-screen bg-gray-900">
         <Sidebar />
-        <main className="flex-1 p-6 ml-64">
-          <div className="text-gray-300">Loading...</div>
+        <main className="flex-1 p-6 md:ml-64 flex items-center justify-center">
+          <div className="text-gray-100 text-xl">Loading...</div>
         </main>
       </div>
     );
   }
-
+  
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100">
-      <Sidebar />
-      <main className="flex-1 p-8 ml-64">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
-          <p className="mt-2 text-gray-400">Monitor platform statistics and manage resources</p>
-        </header>
+    <>
+      <Helmet>
+        <title>Admin Dashboard | Inswinger+</title>
+        <meta name="description" content="Manage your Inswinger+ sports streaming platform. View statistics, manage users, and control content." />
+        <meta name="robots" content="noindex,nofollow" />
+      </Helmet>
+      <div className="min-h-screen bg-gray-900 text-gray-100">
+        <Sidebar />
+        <main className="flex-1 p-8 md:ml-64">
+          <header className="mb-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
+                <p className="mt-2 text-gray-400">Monitor platform statistics and manage resources</p>
+              </div>
 
-        <section className="max-w-7xl space-y-8">
-          {/* Stats grid */}
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            {statCards.map((card, index) => {
-              const Icon = card.icon;
-              return (
-                <div
-                  key={index}
-                  className="bg-gray-800 border border-gray-700 rounded-xl p-6 hover:border-gray-600 transition-all duration-200 hover:shadow-lg"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">{card.label}</p>
-                      <p className="text-2xl font-bold mt-3 text-white">{card.value}</p>
-                    </div>
-                    <div className={`p-3 bg-gray-700/50 rounded-lg ${card.color}`}>
-                      <Icon className="text-xl" />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Recent Activity */}
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Recent User Registrations</h3>
-            <div className="space-y-3">
-              {recentActivity.length === 0 ? (
-                <p className="text-gray-400 text-sm">No recent activity</p>
-              ) : (
-                recentActivity.map((user, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                        <span className="text-white font-semibold text-sm">
-                          {(user.name || user.email || 'U').charAt(0).toUpperCase()
-                        }</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-white">{user.name || 'No name'}</p>
-                        <p className="text-xs text-gray-400">{user.email}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`text-xs px-2 py-1 rounded ${
-                        user.role === 'admin' ? 'bg-red-500/20 text-red-400' :
-                        user.role === 'streamer' ? 'bg-purple-500/20 text-purple-400' :
-                        'bg-blue-500/20 text-blue-400'
-                      }`}>
-                        {user.role}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {new Date(user.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Platform Overview */}
-          <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-            <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Streamer Status</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Verification Rate</span>
-                  <span className="text-white font-semibold">
-                    {stats.verifiedStreamers + stats.pendingStreamers > 0
-                      ? Math.round((stats.verifiedStreamers / (stats.verifiedStreamers + stats.pendingStreamers)) * 100)
-                      : 0}%
-                  </span>
-                </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all"
-                    style={{
-                      width: `${
-                        stats.verifiedStreamers + stats.pendingStreamers > 0
-                          ? (stats.verifiedStreamers / (stats.verifiedStreamers + stats.pendingStreamers)) * 100
-                          : 0
-                      }%`
-                    }}
-                  />
-                </div>
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-gray-400">Activity Rate</span>
-                  <span className="text-white font-semibold">
-                    {stats.verifiedStreamers > 0
-                      ? Math.round((stats.activeStreamers / stats.verifiedStreamers) * 100)
-                      : 0}%
-                  </span>
-                </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all"
-                    style={{
-                      width: `${
-                        stats.verifiedStreamers > 0
-                          ? (stats.activeStreamers / stats.verifiedStreamers) * 100
-                          : 0
-                      }%`
-                    }}
-                  />
+              {/* Payment details editor toggle */}
+              <div className="flex flex-col items-end gap-2">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPaymentEditingOpen(p => !p)}
+                    className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                  >
+                    {paymentEditingOpen ? 'Close Editor' : 'Edit Payment Details'}
+                  </button>
+                  <button
+                    onClick={clearPaymentDetails}
+                    className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                  >
+                    Clear Runtime Details
+                  </button>
                 </div>
               </div>
             </div>
 
+            {/* Collapsible editor */}
+            {paymentEditingOpen && (
+              <div className="mt-6 bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <input
+                    className="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-gray-100"
+                    value={paymentDetails.accountName}
+                    onChange={(e) => setPaymentDetails(prev => ({ ...prev, accountName: e.target.value }))}
+                    placeholder="Account Name"
+                  />
+                  <input
+                    className="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-gray-100"
+                    value={paymentDetails.accountNumber}
+                    onChange={(e) => setPaymentDetails(prev => ({ ...prev, accountNumber: e.target.value }))}
+                    placeholder="Account Number"
+                  />
+                  <input
+                    className="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-gray-100"
+                    value={paymentDetails.bank}
+                    onChange={(e) => setPaymentDetails(prev => ({ ...prev, bank: e.target.value }))}
+                    placeholder="Bank Name"
+                  />
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <button onClick={savePaymentDetails} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Save</button>
+                  <button onClick={() => { setPaymentEditingOpen(false); }} className="px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600">Cancel</button>
+                </div>
+              </div>
+            )}
+          </header>
+
+          <section className="max-w-7xl space-y-8">
+            {/* Stats grid */}
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              {statCards.map((card, index) => {
+                const Icon = card.icon;
+                return (
+                  <div
+                    key={index}
+                    className="bg-gray-800 border border-gray-700 rounded-xl p-6 hover:border-gray-600 transition-all duration-200 hover:shadow-lg"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">{card.label}</p>
+                        <p className="text-2xl font-bold mt-3 text-white">{card.value}</p>
+                      </div>
+                      <div className={`p-3 bg-gray-700/50 rounded-lg ${card.color}`}>
+                        <Icon className="text-xl" />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Recent Activity */}
             <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Content Overview</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <MdVideoLibrary className="text-purple-400 text-xl" />
-                    <span className="text-gray-300">Average Streams per Streamer</span>
+              <h3 className="text-lg font-semibold text-white mb-4">Recent User Registrations</h3>
+              <div className="space-y-3">
+                {recentActivity.length === 0 ? (
+                  <p className="text-gray-400 text-sm">No recent activity</p>
+                ) : (
+                  recentActivity.map((user, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                          <span className="text-white font-semibold text-sm">
+                            {(user.name || user.email || 'U').charAt(0).toUpperCase()
+                          }</span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-white">{user.name || 'No name'}</p>
+                          <p className="text-xs text-gray-400">{user.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          user.role === 'admin' ? 'bg-red-500/20 text-red-400' :
+                          user.role === 'streamer' ? 'bg-purple-500/20 text-purple-400' :
+                          'bg-blue-500/20 text-blue-400'
+                        }`}>
+                          {user.role}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Platform Overview */}
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+              <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Streamer Status</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-400">Verification Rate</span>
+                    <span className="text-white font-semibold">
+                      {stats.verifiedStreamers + stats.pendingStreamers > 0
+                        ? Math.round((stats.verifiedStreamers / (stats.verifiedStreamers + stats.pendingStreamers)) * 100)
+                        : 0}%
+                    </span>
                   </div>
-                  <span className="text-white font-semibold">
-                    {stats.activeStreamers > 0 ? Math.round(stats.totalStreams / stats.activeStreamers) : 0}
-                  </span>
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div
+                      className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all"
+                      style={{
+                        width: `${
+                          stats.verifiedStreamers + stats.pendingStreamers > 0
+                            ? (stats.verifiedStreamers / (stats.verifiedStreamers + stats.pendingStreamers)) * 100
+                            : 0
+                        }%`
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between pt-2">
+                    <span className="text-gray-400">Activity Rate</span>
+                    <span className="text-white font-semibold">
+                      {stats.verifiedStreamers > 0
+                        ? Math.round((stats.activeStreamers / stats.verifiedStreamers) * 100)
+                        : 0}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all"
+                      style={{
+                        width: `${
+                          stats.verifiedStreamers > 0
+                            ? (stats.activeStreamers / stats.verifiedStreamers) * 100
+                            : 0
+                        }%`
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <MdEvent className="text-orange-400 text-xl" />
-                    <span className="text-gray-300">Events Scheduled</span>
+              </div>
+
+              <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Content Overview</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <MdVideoLibrary className="text-purple-400 text-xl" />
+                      <span className="text-gray-300">Average Streams per Streamer</span>
+                    </div>
+                    <span className="text-white font-semibold">
+                      {stats.activeStreamers > 0 ? Math.round(stats.totalStreams / stats.activeStreamers) : 0}
+                    </span>
                   </div>
-                  <span className="text-white font-semibold">{stats.upcomingEvents}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <MdArticle className="text-pink-400 text-xl" />
-                    <span className="text-gray-300">Published Blogs</span>
+                  <div className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <MdEvent className="text-orange-400 text-xl" />
+                      <span className="text-gray-300">Events Scheduled</span>
+                    </div>
+                    <span className="text-white font-semibold">{stats.upcomingEvents}</span>
                   </div>
-                  <span className="text-white font-semibold">{stats.totalBlogs}</span>
+                  <div className="flex items-center justify-between p-3 bg-gray-700/50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <MdArticle className="text-pink-400 text-xl" />
+                      <span className="text-gray-300">Published Blogs</span>
+                    </div>
+                    <span className="text-white font-semibold">{stats.totalBlogs}</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </section>
-      </main>
-    </div>
+          </section>
+        </main>
+      </div>
+    </>
   );
 };
 

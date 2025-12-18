@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Sidebar from '../../components/Sidebar';
 import { supabase } from '../../lib/supabase';
 import { MdCheckCircle, MdCancel, MdImage, MdEmail, MdCalendarToday, MdClose, MdPending, MdVerified } from 'react-icons/md';
+import { useToast } from '../../components/ToastContainer';
 
 export default function Verifications() {
   const [verifications, setVerifications] = useState([]);
@@ -9,6 +10,7 @@ export default function Verifications() {
   const [approving, setApproving] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const toast = useToast();
 
   const fetchVerifications = async () => {
     try {
@@ -18,13 +20,13 @@ export default function Verifications() {
         .from('users')
         .select('id, name, email, is_verified, screenshot_url, plan, created_at')
         .eq('role', 'streamer')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false});
       
       if (error) throw error;
       setVerifications(data || []);
     } catch (err) {
       console.error('Error fetching verifications:', err);
-      alert(err.message || 'Failed to load verifications');
+      toast.error(err.message || 'Failed to load verifications');
     } finally {
       setLoading(false);
     }
@@ -46,11 +48,11 @@ export default function Verifications() {
       
       if (error) throw error;
       
-      alert('Streamer approved successfully!');
+      toast.success('Streamer approved successfully!');
       await fetchVerifications();
     } catch (err) {
       console.error('Approve error:', err);
-      alert(err.message || 'Failed to approve streamer');
+      toast.error(err.message || 'Failed to approve streamer');
     } finally {
       setApproving(null);
     }
@@ -69,11 +71,11 @@ export default function Verifications() {
       
       if (error) throw error;
       
-      alert('Verification rejected.');
+      toast.warning('Verification rejected.');
       await fetchVerifications();
     } catch (err) {
       console.error('Reject error:', err);
-      alert(err.message || 'Failed to reject verification');
+      toast.error(err.message || 'Failed to reject verification');
     } finally {
       setApproving(null);
     }
@@ -94,7 +96,7 @@ export default function Verifications() {
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
       <Sidebar />
-      <main className="p-8 ml-64">
+      <main className="p-8 md:ml-64">
         <header className="mb-8">
           <h1 className="text-3xl font-bold text-white">Payment Verifications</h1>
           <p className="mt-2 text-gray-400">Review and approve payment screenshots from streamers</p>

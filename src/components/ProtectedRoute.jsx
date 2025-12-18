@@ -1,10 +1,8 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+const ProtectedRoute = ({ children, allowedRoles = [], requireVerification = true }) => {
   const { user, profile, loading } = useAuth();
-  // Removed arbitrary timeout-based redirect. We'll wait for AuthContext to
-  // finish resolving session/profile to avoid false logouts during slow networks.
 
   if (loading) {
     return (
@@ -22,11 +20,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // If the route expects streamers and the streamer isn't verified, send to pending
-  if (allowedRoles.includes('streamer') && profile.role === 'streamer' && !profile.is_verified) {
-    return <Navigate to="/verification-pending" replace />;
-  }
-
+  // Check role access
   if (allowedRoles.length > 0 && !allowedRoles.includes(profile.role)) {
     // Redirect to appropriate dashboard based on role
     switch (profile.role) {
@@ -37,6 +31,26 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
       case 'user':
       default:
         return <Navigate to="/home" replace />;
+    }
+  }
+
+  // For streamers, handle verification flow
+  if (profile.role === 'streamer' && requireVerification) {
+    // If streamer is verified, allow access
+    if (profile.is_verified) {
+      return children;
+    }
+    
+    // If not verified, redirect based on current state
+    if (!profile.plan) {
+      // No plan selected yet, send to subscription plans
+      return <Navigate to="/subscription-plans" replace />;
+    } else if (!profile.screenshot_url) {
+      // Plan selected but no screenshot uploaded
+      return <Navigate to="/verification-upload" replace />;
+    } else {
+      // Screenshot uploaded, waiting for approval
+      return <Navigate to="/verification-pending" replace />;
     }
   }
 

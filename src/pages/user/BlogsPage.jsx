@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { MdArticle, MdCalendarToday, MdClose } from 'react-icons/md';
-import SEO from '../../components/SEO';
+import DynamicSEO from '../../components/DynamicSEO';
 
 const BlogsPage = () => {
   const [blogs, setBlogs] = useState([]);
@@ -15,9 +15,11 @@ const BlogsPage = () => {
 
   const fetchBlogs = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('blogs')
         .select('*')
+        .eq('published', true) // Only fetch published blogs
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -68,12 +70,17 @@ const BlogsPage = () => {
 
   return (
     <>
-      <SEO
-        title="Sports News & Blogs | Inswinger+"
-        description={`Read the latest sports news, match analysis, and expert opinions. ${blogs.length} articles covering football, cricket, basketball, and more.`}
-        keywords="sports news, sports blog, football news, cricket updates, basketball analysis, sports articles"
+      <DynamicSEO
+        pageType="blog"
+        title="Sports News & Analysis"
+        content={blogs[0]?.content || 'Latest sports news, match analysis, expert opinions and trending stories from the world of sports'}
+        sport={blogs[0]?.sport}
+        fallbackTitle="Sports News & Blogs | Inswinger+"
+        fallbackDescription="Read the latest sports news, match analysis, and expert opinions on Inswinger+. Stay updated with trending sports stories."
+        fallbackKeywords="sports news, sports blog, football news, cricket updates, match analysis, sports opinions"
         canonical="/blogs"
         schema={schema}
+        useAI={true}
       />
       <div className="min-h-screen bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -121,11 +128,28 @@ const BlogsPage = () => {
                     className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden hover:border-blue-500 transition-all duration-200 hover:shadow-xl hover:shadow-blue-500/10 cursor-pointer group"
                     onClick={() => setSelectedBlog(blog)}
                   >
+                    {/* Thumbnail */}
+                    <div className="relative w-full h-48 bg-gradient-to-br from-purple-600 to-blue-600 overflow-hidden">
+                      {blog.thumbnail ? (
+                        <img 
+                          src={blog.thumbnail} 
+                          alt={blog.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = '';
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <MdArticle className="text-6xl text-white opacity-50" />
+                        </div>
+                      )}
+                    </div>
+
                     <div className="p-6">
                       <div className="flex items-start gap-3 mb-4">
-                        <div className="p-2 bg-purple-500/10 rounded-lg group-hover:bg-purple-500/20 transition-colors">
-                          <MdArticle className="text-2xl text-purple-400" />
-                        </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="text-lg font-bold text-white mb-2 group-hover:text-blue-400 transition-colors line-clamp-2">
                             {blog.title}

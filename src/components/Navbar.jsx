@@ -13,9 +13,15 @@ const Navbar = () => {
   // Treat "signing out" as logged-out to immediately show Login/Sign Up
   const isAuthenticated = !!user && !!profile && !signingOut;
 
-  // Hide navbar for admin always.
-  // For streamers, only show navbar on specific pages (subscription / verification flow).
-  const STREAMER_VISIBLE_PATHS = [
+  // Check if streamer is on verification pages
+  const isOnVerificationPages = ['/verification-upload', '/verification-pending', '/subscription-plans'].includes(location.pathname);
+
+  // Hide navbar for admin always
+  // Show navbar for streamers during onboarding flow and after verification
+  const ALWAYS_SHOW_NAVBAR_PATHS = [
+    '/',
+    '/login',
+    '/signup',
     '/subscription-plans',
     '/verification-upload',
     '/verification-pending',
@@ -24,13 +30,18 @@ const Navbar = () => {
   let hideNavbar = false;
   if (isAuthenticated) {
     if (profile?.role === 'admin') {
+      // Always hide for admin
       hideNavbar = true;
     } else if (profile?.role === 'streamer') {
-      // show navbar for streamers only on the allowlisted pages
-      if (!STREAMER_VISIBLE_PATHS.includes(location.pathname)) {
-        hideNavbar = true;
-      }
+      // Show navbar during onboarding, hide after verification on dashboard
+      const onDashboard = location.pathname.startsWith('/streamer/');
+      hideNavbar = onDashboard && profile.is_verified;
     }
+  }
+
+  // Always show navbar on public pages
+  if (ALWAYS_SHOW_NAVBAR_PATHS.includes(location.pathname)) {
+    hideNavbar = false;
   }
 
   if (hideNavbar) return null;
@@ -88,19 +99,28 @@ const Navbar = () => {
     <nav className="bg-gray-800 border-b border-gray-700 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to={isAuthenticated ? getDashboardLink() : '/'} className="flex items-center space-x-2">
-            <div className="text-2xl font-bold">
-              <span className="neon-text">Inswinger</span>
-              <span className="text-blue-500">+</span>
-            </div>
-          </Link>
+          {/* Logo - Hide on verification pages */}
+          {!isOnVerificationPages && (
+            <Link 
+              to="/" 
+              className="flex items-center space-x-2"
+            >
+              <div className="text-2xl font-bold">
+                <span className="neon-text">Inswinger</span>
+                <span className="text-blue-500">+</span>
+              </div>
+            </Link>
+          )}
+
+          {/* Spacer when logo is hidden */}
+          {isOnVerificationPages && <div></div>}
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             {isAuthenticated && (
               <>
-                {profile.role === 'user' && (
+                {/* Only show navigation links if NOT on verification pages */}
+                {!isOnVerificationPages && profile.role === 'user' && (
                   <>
                     <Link to="/home" className="text-gray-300 hover:text-white transition-colors">
                       Home
@@ -114,7 +134,7 @@ const Navbar = () => {
                   </>
                 )}
 
-                {/* Profile Dropdown */}
+                {/* Profile Dropdown - always show for authenticated users */}
                 <div className="relative">
                   <button
                     onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
@@ -209,7 +229,8 @@ const Navbar = () => {
           <div className="px-2 pt-2 pb-3 space-y-1">
             {isAuthenticated && (
               <>
-                {profile.role === 'user' && (
+                {/* Only show navigation links if NOT on verification pages */}
+                {!isOnVerificationPages && profile.role === 'user' && (
                   <>
                     <Link
                       to="/home"

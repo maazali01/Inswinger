@@ -48,6 +48,102 @@
   }
 }
 
+/* Rich Text Editor Styles */
+[contenteditable] {
+  caret-color: #93c5fd;
+}
+
+[contenteditable]:focus {
+  outline: none;
+}
+
+[contenteditable] h1 {
+  font-size: 2em;
+  font-weight: bold;
+  margin: 0.5em 0;
+}
+
+[contenteditable] h2 {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin: 0.5em 0;
+}
+
+[contenteditable] h3 {
+  font-size: 1.25em;
+  font-weight: bold;
+  margin: 0.5em 0;
+}
+
+[contenteditable] h4 {
+  font-size: 1.1em;
+  font-weight: bold;
+  margin: 0.5em 0;
+}
+
+[contenteditable] p {
+  margin: 0.75em 0;
+}
+
+[contenteditable] ul,
+[contenteditable] ol {
+  margin: 0.75em 0;
+  padding-left: 2em;
+}
+
+[contenteditable] li {
+  margin: 0.25em 0;
+}
+
+[contenteditable] blockquote {
+  border-left: 4px solid #60a5fa;
+  padding-left: 1em;
+  margin: 1em 0;
+  font-style: italic;
+  color: #9ca3af;
+}
+
+[contenteditable] pre {
+  background-color: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 0.375rem;
+  padding: 1em;
+  margin: 1em 0;
+  overflow-x: auto;
+  font-family: 'Courier New', monospace;
+}
+
+[contenteditable] code {
+  background-color: #1f2937;
+  padding: 0.2em 0.4em;
+  border-radius: 0.25rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+[contenteditable] a {
+  color: #60a5fa;
+  text-decoration: underline;
+}
+
+[contenteditable] a:hover {
+  color: #93c5fd;
+}
+
+[contenteditable] strong,
+[contenteditable] b {
+  font-weight: bold;
+}
+
+[contenteditable] em,
+[contenteditable] i {
+  font-style: italic;
+}
+
+[contenteditable] u {
+  text-decoration: underline;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase';
 import { SPORTS_CATEGORIES } from '../../lib/constants';
 import { MdSearch, MdClose, MdVideoLibrary, MdLiveTv, MdPlayArrow, MdAccessTime } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
+import { generateStreamUrl } from '../../lib/utils';
+import { SEO_METADATA } from '../../lib/seo';
 import SEO from '../../components/SEO';
 
 const UserDashboard = () => {
@@ -57,7 +59,7 @@ const UserDashboard = () => {
       "@type": "ListItem",
       "position": index + 1,
       "name": stream.stream_types?.title || 'Sports Stream',
-      "url": `${window.location.origin}/stream/${stream.id}`,
+      "url": `${window.location.origin}${generateStreamUrl(stream.stream_types?.title, stream.users?.name)}`,
     })),
   };
 
@@ -72,9 +74,9 @@ const UserDashboard = () => {
   return (
     <>
       <SEO
-        title="Live Sports Streams | Inswinger+ Dashboard"
-        description={`Watch ${streams.length} live sports streams including football, cricket, basketball, and more. Stream your favorite sports events in HD quality.`}
-        keywords="live sports, sports streaming, football live, cricket live, basketball streams, watch sports online"
+        title={SEO_METADATA.userDashboard.title}
+        description={SEO_METADATA.userDashboard.description}
+        keywords={SEO_METADATA.userDashboard.keywords}
         canonical="/home"
         schema={schema}
       />
@@ -174,11 +176,11 @@ const UserDashboard = () => {
               {filteredStreams.map((stream) => (
                 <div
                   key={stream.id}
-                  className="bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-blue-500 transition-all cursor-pointer"
-                  onClick={() => navigate(`/stream/${stream.id}`)}
+                  className="bg-gray-800 border border-gray-700 rounded-lg p-4 sm:p-5 hover:border-blue-500 transition-all cursor-pointer"
+                  onClick={() => navigate(generateStreamUrl(stream.stream_types?.title, stream.users?.name))}
                 >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="flex items-start gap-4 flex-1 min-w-0">
                       <div className={`p-3 rounded-lg ${stream.is_live ? 'bg-red-500/10' : 'bg-gray-700/50'}`}>
                         {stream.is_live ? (
                           <MdLiveTv className="text-2xl text-red-400" />
@@ -186,11 +188,11 @@ const UserDashboard = () => {
                           <MdVideoLibrary className="text-2xl text-gray-400" />
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 space-y-2">
                         <h3 className="text-lg font-semibold text-white truncate">
                           {stream.stream_types?.title || 'Untitled Stream'}
                         </h3>
-                        <div className="flex items-center gap-3 mt-2 text-sm text-gray-400 flex-wrap">
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-gray-400">
                           <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded text-xs font-medium">
                             {stream.stream_types?.sport || 'Sport'}
                           </span>
@@ -218,7 +220,7 @@ const UserDashboard = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
                       <span className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
                         stream.is_live 
                           ? 'bg-red-600 text-white' 
@@ -231,7 +233,7 @@ const UserDashboard = () => {
                         }`}></span>
                         {stream.is_live ? 'LIVE' : 'OFFLINE'}
                       </span>
-                      <button className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                      <button className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors w-full sm:w-auto">
                         <MdPlayArrow className="text-xl" />
                         <span className="font-medium">Watch</span>
                       </button>

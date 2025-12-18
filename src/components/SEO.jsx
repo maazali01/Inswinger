@@ -1,4 +1,6 @@
 import { Helmet } from 'react-helmet-async';
+import { useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 
 export default function SEO({
   title = 'Inswinger+ | Live Sports Streaming Platform',
@@ -9,9 +11,15 @@ export default function SEO({
   schema,
   noindex = false,
 }) {
+  const location = useLocation();
   const siteUrl = window.location.origin;
-  const currentUrl = window.location.href;
-  const canonicalUrl = canonical ? `${siteUrl}${canonical}` : currentUrl;
+  const canonicalUrl = canonical ? `${siteUrl}${canonical}` : `${siteUrl}${location.pathname}`;
+
+  // Force helmet to update on route change
+  useEffect(() => {
+    // This ensures the helmet updates when location changes
+    document.title = title;
+  }, [title, location.pathname]);
 
   return (
     <Helmet>
@@ -26,7 +34,7 @@ export default function SEO({
 
       {/* Open Graph / Facebook */}
       <meta property="og:type" content="website" />
-      <meta property="og:url" content={currentUrl} />
+      <meta property="og:url" content={canonicalUrl} />
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
       <meta property="og:image" content={`${siteUrl}${image}`} />
@@ -34,7 +42,7 @@ export default function SEO({
 
       {/* Twitter */}
       <meta property="twitter:card" content="summary_large_image" />
-      <meta property="twitter:url" content={currentUrl} />
+      <meta property="twitter:url" content={canonicalUrl} />
       <meta property="twitter:title" content={title} />
       <meta property="twitter:description" content={description} />
       <meta property="twitter:image" content={`${siteUrl}${image}`} />

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { useToast } from '../../components/ToastContainer';
 
 export default function StreamerProfile() {
   const { user, profile } = useAuth();
@@ -14,6 +15,7 @@ export default function StreamerProfile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     if (profile) {
@@ -36,7 +38,7 @@ export default function StreamerProfile() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!user?.id) {
-      alert('User not loaded');
+      toast.error('User not loaded');
       return;
     }
     setUploading(true);
@@ -53,10 +55,10 @@ export default function StreamerProfile() {
       const publicUrl = urlData?.publicUrl || '';
       // update local form so user sees new image before saving profile
       setForm(prev => ({ ...prev, screenshot_url: publicUrl }));
-      alert('Upload successful. Remember to Save Profile to persist.');
+      toast.success('Upload successful. Remember to Save Profile to persist.');
     } catch (err) {
       console.error('Upload error', err);
-      alert(err.message || 'Upload failed');
+      toast.error(err.message || 'Upload failed');
     } finally {
       setUploading(false);
       // clear input value to allow re-upload same file if needed
@@ -67,7 +69,7 @@ export default function StreamerProfile() {
   const handleSave = async (ev) => {
     ev.preventDefault();
     if (!user?.id) {
-      alert('User not loaded');
+      toast.error('User not loaded');
       return;
     }
     setSaving(true);
@@ -82,11 +84,11 @@ export default function StreamerProfile() {
       const targetId = profile?.id || user.id;
       const { error } = await supabase.from('users').update(updates).eq('id', targetId);
       if (error) throw error;
-      alert('Profile updated. Reloading to refresh auth state...');
-      window.location.reload();
+      toast.success('Profile updated successfully!');
+      setTimeout(() => window.location.reload(), 1500);
     } catch (err) {
       console.error('Save profile error', err);
-      alert(err.message || 'Failed to save profile');
+      toast.error(err.message || 'Failed to save profile');
     } finally {
       setSaving(false);
     }

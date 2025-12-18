@@ -12,9 +12,9 @@ export default function Sitemap() {
     const baseUrl = window.location.origin;
     const now = new Date().toISOString();
 
-    // Fetch dynamic content
+    // Fetch dynamic content with user names
     const [streamsRes, blogsRes, eventsRes] = await Promise.all([
-      supabase.from('streams').select('id, updated_at').limit(100),
+      supabase.from('streams').select('stream_types(title, slug), users(name), updated_at').limit(100),
       supabase.from('blogs').select('id, slug, updated_at').limit(100),
       supabase.from('upcoming_events').select('id, updated_at').limit(100),
     ]);
@@ -32,12 +32,17 @@ export default function Sitemap() {
       { loc: '/events', priority: '0.9', changefreq: 'daily' },
     ];
 
-    const streamPages = streams.map(s => ({
-      loc: `/stream/${s.id}`,
-      lastmod: s.updated_at || now,
-      priority: '0.7',
-      changefreq: 'hourly',
-    }));
+    const streamPages = streams.map(s => {
+      const titleSlug = s.stream_types?.slug || s.stream_types?.title?.toLowerCase().replace(/\s+/g, '-');
+      const streamerSlug = s.users?.name?.toLowerCase().replace(/\s+/g, '-');
+      
+      return {
+        loc: streamerSlug ? `/stream/${streamerSlug}/${titleSlug}` : `/stream/${titleSlug}`,
+        lastmod: s.updated_at || now,
+        priority: '0.7',
+        changefreq: 'hourly',
+      };
+    });
 
     const blogPages = blogs.map(b => ({
       loc: `/blogs/${b.slug || b.id}`,

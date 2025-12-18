@@ -25,6 +25,8 @@ A modern, full-stack sports streaming platform built with React, Vite, Tailwind 
 
 - Node.js 18+ 
 - A Supabase account (free tier works)
+- Netlify CLI (optional for local testing): `npm install -g netlify-cli`
+- Hugging Face API key (free at huggingface.co)
 
 ### Installation
 
@@ -38,22 +40,33 @@ A modern, full-stack sports streaming platform built with React, Vite, Tailwind 
    - Copy your project URL and anon key
    - Run the SQL commands from `SUPABASE_SETUP.md` in your Supabase SQL Editor
 
-3. **Configure environment variables**:
+3. **Get Hugging Face API Key**:
+   - Sign up at [huggingface.co](https://huggingface.co)
+   - Go to Settings → Access Tokens
+   - Create a new token with "Read" permission
+   - Copy the token
+
+4. **Configure environment variables**:
    ```bash
    cp .env.example .env
    ```
-   Edit `.env` and add your Supabase credentials:
+   Edit `.env` and add your credentials:
    ```
    VITE_SUPABASE_URL=your_supabase_project_url
    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   HUGGINGFACE_API_KEY=your_huggingface_api_key
    ```
 
-4. **Start development server**:
+5. **Start development server**:
    ```bash
+   # Using Vite (frontend only, AI features won't work)
    npm run dev
+
+   # Using Netlify Dev (recommended, includes serverless functions)
+   npm run netlify:dev
    ```
 
-5. **Create an admin user**:
+6. **Create an admin user**:
    - Sign up through the app
    - Run this SQL in Supabase to promote yourself:
    ```sql
@@ -167,17 +180,35 @@ npm run preview
 
 ## Deployment
 
-### Vercel (Recommended)
+### Netlify (Recommended)
 
 1. Push to GitHub
-2. Import project in Vercel
-3. Add environment variables (Supabase URL and key)
-4. Deploy
+2. Import project in Netlify
+3. Configure build settings:
+   - Build command: `npm run build`
+   - Publish directory: `dist`
+   - Functions directory: `netlify/functions`
+4. Add environment variables in Netlify dashboard:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+   - `HUGGINGFACE_API_KEY`
+5. Deploy
+
+### Manual Deployment via Netlify CLI
+```bash
+# Login to Netlify
+netlify login
+
+# Deploy to production
+npm run netlify:deploy
+```
 
 ### Environment Variables for Production
+In Netlify dashboard, add these environment variables:
 ```
 VITE_SUPABASE_URL=your_production_supabase_url
 VITE_SUPABASE_ANON_KEY=your_production_anon_key
+HUGGINGFACE_API_KEY=your_production_huggingface_api_key
 ```
 
 ## Customization

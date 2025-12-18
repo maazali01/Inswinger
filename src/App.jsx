@@ -1,9 +1,10 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 import ErrorBoundary from './components/ErrorBoundary';
+import { ToastProvider } from './components/ToastContainer';
 
 // Public Pages
 import LandingPage from './pages/LandingPage';
@@ -31,168 +32,195 @@ import StreamerManagement from './pages/admin/StreamerManagement';
 import StreamTypeManagement from './pages/admin/StreamTypeManagement';
 import BlogManagement from './pages/admin/BlogManagement';
 import UserManagement from './pages/admin/UserManagement';
-import Verifications from './pages/admin/Verifications';
 import EventManagement from './pages/admin/EventManagement';
+import StreamManagement from './pages/admin/StreamManagement';
 import Sitemap from './pages/Sitemap';
+
+function AppContent() {
+  const location = useLocation();
+  
+  return (
+    <div className="min-h-screen bg-gray-900">
+      <Navbar />
+      <Routes>
+        {/* Public Routes - Landing page MUST be first */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        
+        {/* Streamer onboarding routes - require auth but not full verification */}
+        <Route
+          path="/subscription-plans"
+          element={
+            <ProtectedRoute allowedRoles={['streamer']} requireVerification={false}>
+              <SubscriptionPlans />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/verification-upload"
+          element={
+            <ProtectedRoute allowedRoles={['streamer']} requireVerification={false}>
+              <VerificationUpload />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/verification-pending"
+          element={
+            <ProtectedRoute allowedRoles={['streamer']} requireVerification={false}>
+              <VerificationPending />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* User Routes */}
+        <Route
+          path="/home"
+          element={
+            <ProtectedRoute allowedRoles={['user']}>
+              <UserDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/stream/:streamerSlug/:slug"
+          element={
+            <ProtectedRoute allowedRoles={['user']}>
+              <StreamView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/stream/:slug"
+          element={
+            <ProtectedRoute allowedRoles={['user']}>
+              <StreamView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/blogs"
+          element={
+            <ProtectedRoute allowedRoles={['user']}>
+              <BlogsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/events"
+          element={
+            <ProtectedRoute allowedRoles={['user']}>
+              <EventsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Streamer Routes */}
+        <Route
+          path="/streamer/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['streamer']}>
+              <StreamerDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/streamer/analytics"
+          element={
+            <ProtectedRoute allowedRoles={['streamer']}>
+              <StreamerAnalytics />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/streamer/profile"
+          element={
+            <ProtectedRoute allowedRoles={['streamer']}>
+              <StreamerProfile/>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin Routes */}
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/streamers"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <StreamerManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/stream-types"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <StreamTypeManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/stream-management"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <StreamManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/events"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <EventManagement/>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/blogs"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <BlogManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <UserManagement />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Sitemap */}
+        <Route path="/sitemap.xml" element={<Sitemap />} />
+
+        {/* Fallback - redirect unknown routes to landing page */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </div>
+  );
+}
 
 function App() {
   return (
-    <HelmetProvider>
-      <ErrorBoundary>
-        <Router>
-          <AuthProvider>
-            <div className="min-h-screen bg-gray-900">
-              <Navbar />
-              <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/signup" element={<Signup />} />
-                <Route path="/verification-pending" element={<VerificationPending />} />
-                
-                {/* Subscription & Verification Routes */}
-                <Route
-                  path="/subscription-plans"
-                  element={
-                      <SubscriptionPlans />
-                  }
-                />
-                <Route
-                  path="/verification-upload"
-                  element={
-                      <VerificationUpload />
-                  }
-                />
-
-                {/* User Routes */}
-                <Route
-                  path="/home"
-                  element={
-                    <ProtectedRoute allowedRoles={['user']}>
-                      <UserDashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/stream/:id"
-                  element={
-                    <ProtectedRoute allowedRoles={['user']}>
-                      <StreamView />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/blogs"
-                  element={
-                    <ProtectedRoute allowedRoles={['user']}>
-                      <BlogsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/events"
-                  element={
-                    <ProtectedRoute allowedRoles={['user']}>
-                      <EventsPage />
-                    </ProtectedRoute>
-                  }
-                />
-
-                {/* Streamer Routes */}
-                <Route
-                  path="/streamer/dashboard"
-                  element={
-                    <ProtectedRoute allowedRoles={['streamer']}>
-                      <StreamerDashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/streamer/analytics"
-                  element={
-                    <ProtectedRoute allowedRoles={['streamer']}>
-                      <StreamerAnalytics />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/streamer/profile"
-                  element={
-                    <ProtectedRoute allowedRoles={['streamer']}>
-                      <StreamerProfile/>
-                    </ProtectedRoute>
-                  }
-                />
-
-                {/* Admin Routes */}
-                <Route
-                  path="/admin/dashboard"
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminDashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/streamers"
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <StreamerManagement />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/stream-types"
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <StreamTypeManagement />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/events"
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <EventManagement/>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/blogs"
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <BlogManagement />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/users"
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <UserManagement />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin/verifications"
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <Verifications />
-                    </ProtectedRoute>
-                  }
-                />
-
-                {/* Sitemap */}
-                <Route path="/sitemap.xml" element={<Sitemap />} />
-
-                {/* Fallback - redirect unknown routes to landing page */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </div>
-          </AuthProvider>
-        </Router>
-      </ErrorBoundary>
-    </HelmetProvider>
+    <AuthProvider>
+      <HelmetProvider>
+        <ToastProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </ToastProvider>
+      </HelmetProvider>
+    </AuthProvider>
   );
 }
 

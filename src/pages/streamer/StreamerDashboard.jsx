@@ -14,9 +14,10 @@ import {
   MdSports,
   MdTimer,
 } from 'react-icons/md';
+import { generateStreamUrl } from '../../lib/utils';
 
 const StreamerDashboard = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [streams, setStreams] = useState([]);
   const [streamTypes, setStreamTypes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -256,6 +257,8 @@ const StreamerDashboard = () => {
                 const status = streamStatus(stream);
                 const start = stream.stream_types?.start_time ? new Date(stream.stream_types.start_time) : null;
                 const end = stream.stream_types?.end_time ? new Date(stream.stream_types.end_time) : null;
+                const fullStreamUrl = generateStreamUrl(stream.stream_types?.title, profile?.name);
+                
                 return (
                   <div key={stream.id} className="bg-gray-800 border border-gray-700 rounded-xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -282,6 +285,9 @@ const StreamerDashboard = () => {
                             <span className="text-xs text-gray-500">• {stream.adult_ads ? 'Adult ads' : 'No adult ads'}</span>
                           </div>
                           <p className="text-xs text-gray-500 mt-2 truncate">{stream.stream_link || 'No link provided'}</p>
+                          <span className="text-xs text-gray-500 font-mono">
+                            URL: {fullStreamUrl}
+                          </span>
                         </div>
                       </div>
                     </div>

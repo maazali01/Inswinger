@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/ToastContainer';
 
 const VerificationUpload = () => {
   const [screenshot, setScreenshot] = useState(null);
@@ -9,6 +10,24 @@ const VerificationUpload = () => {
   const [preview, setPreview] = useState(null);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const toast = useToast();
+  const PAYMENT_KEY = 'payment_details';
+  const [runtimePayment, setRuntimePayment] = useState({
+    accountName: 'Inswinger+ Admin',
+    accountNumber: '092393298984332',
+    bank: 'Meezan Bank Limited',
+  });
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(PAYMENT_KEY);
+      if (stored) {
+        setRuntimePayment(JSON.parse(stored));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -28,7 +47,6 @@ const VerificationUpload = () => {
 
     setUploading(true);
     try {
-      // Upload screenshot to Supabase Storage
       const fileExt = screenshot.name.split('.').pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage
@@ -37,12 +55,10 @@ const VerificationUpload = () => {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('verification-screenshots')
         .getPublicUrl(fileName);
 
-      // Update user profile with screenshot URL
       const { error: updateError } = await supabase
         .from('users')
         .update({ screenshot_url: publicUrl })
@@ -50,11 +66,11 @@ const VerificationUpload = () => {
 
       if (updateError) throw updateError;
 
-      // Navigate to pending verification page
+      toast.success('Screenshot uploaded successfully!');
       navigate('/verification-pending');
     } catch (error) {
       console.error('Error uploading screenshot:', error);
-      alert('Failed to upload screenshot. Please try again.');
+      toast.error('Failed to upload screenshot. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -68,9 +84,9 @@ const VerificationUpload = () => {
             Upload Payment Verification
           </h1>
           <p className="text-gray-300 mb-8 text-center">
-            Account Name: Inswinger+ Admin<br />
-            Account Number: 1234567890<br />
-            Bank: Example Bank
+            Account Name: {runtimePayment.accountName}<br />
+            Account Number: {runtimePayment.accountNumber}<br />
+            Bank: {runtimePayment.bank}
           </p>
           <p className="text-gray-300 mb-8 text-center">
             Please upload a screenshot of your payment confirmation. Our admin team will verify your account within 24-48 hours.

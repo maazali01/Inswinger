@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { MdEvent, MdCalendarToday, MdLocationOn, MdSports, MdClose, MdAccessTime } from 'react-icons/md';
-import SEO from '../../components/SEO';
+import DynamicSEO from '../../components/DynamicSEO';
 
 const EventsPage = () => {
   const [events, setEvents] = useState([]);
@@ -79,12 +79,17 @@ const EventsPage = () => {
 
   return (
     <>
-      <SEO
-        title="Upcoming Sports Events | Inswinger+ Schedule"
-        description={`Discover ${upcomingEvents.length} upcoming sports events. Never miss a match with our comprehensive sports calendar covering football, cricket, basketball, and more.`}
-        keywords="sports events, sports schedule, upcoming matches, football fixtures, cricket calendar, sports dates"
+      <DynamicSEO
+        pageType="event"
+        title="Upcoming Sports Events"
+        sport={upcomingEvents[0]?.sport}
+        content={upcomingEvents[0]?.description || 'Discover upcoming sports events, match schedules and never miss your favorite games. Complete sports calendar with live updates.'}
+        fallbackTitle="Upcoming Sports Events | Inswinger+ Schedule"
+        fallbackDescription="Discover upcoming sports events. Never miss a match with our comprehensive sports calendar and live event updates."
+        fallbackKeywords="sports events, sports schedule, upcoming matches, sports calendar, event schedule, match fixtures"
         canonical="/events"
         schema={schema}
+        useAI={true}
       />
       <div className="min-h-screen bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

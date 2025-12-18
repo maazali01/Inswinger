@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { USER_ROLES } from '../lib/constants';
 import SEO from '../components/SEO';
+import { useToast } from '../components/ToastContainer';
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -15,6 +16,7 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const toast = useToast();
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -27,6 +29,7 @@ const Signup = () => {
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
+      toast.error('Passwords do not match');
       setLoading(false);
       return;
     }
@@ -61,15 +64,18 @@ const Signup = () => {
         console.warn('Auto sign-in failed', e?.message ?? e);
       }
 
+      toast.success('Account created successfully!');
+
       if (formData.role === USER_ROLES.STREAMER) {
         navigate('/subscription-plans');
       } else {
         navigate('/home');
       }
     } catch (err) {
-      alert(err.message || 'Signup failed. Please try again.');
+      const errorMsg = err.message || 'Signup failed. Please try again.';
+      toast.error(errorMsg);
       console.error(err);
-      setError(err.message);
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }

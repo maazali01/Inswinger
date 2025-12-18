@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import SEO from '../components/SEO';
+import { useToast } from '../components/ToastContainer';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const toast = useToast();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -32,28 +34,34 @@ const Login = () => {
 
       if (profileError) throw profileError;
 
-      // Redirect based on role
+      toast.success('Login successful!');
+
+      // Redirect based on role and verification status
       switch (profile.role) {
         case 'admin':
           navigate('/admin/dashboard');
           break;
         case 'streamer':
-          // If streamer hasn't selected a subscription plan yet, send them to plans
+          // Check streamer onboarding status (only streamers have plans)
           if (!profile.plan) {
             navigate('/subscription-plans');
-          } else if (profile.is_verified) {
-            navigate('/streamer/dashboard');
-          } else {
+          } else if (!profile.screenshot_url) {
+            navigate('/verification-upload');
+          } else if (!profile.is_verified) {
             navigate('/verification-pending');
+          } else {
+            navigate('/streamer/dashboard');
           }
           break;
         case 'user':
         default:
+          // Users don't have plans, go directly to dashboard
           navigate('/home');
           break;
       }
     } catch (err) {
       setError(err.message || 'Failed to sign in');
+      toast.error(err.message || 'Failed to sign in');
     } finally {
       setLoading(false);
     }

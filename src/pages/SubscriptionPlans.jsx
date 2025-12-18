@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SUBSCRIPTION_PLANS } from '../lib/constants';
 import { supabase } from '../lib/supabase';
@@ -8,35 +8,70 @@ const SubscriptionPlans = () => {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+
+  // Redirect non-streamers
+  useEffect(() => {
+    if (profile && profile.role !== 'streamer') {
+      navigate('/home');
+    }
+  }, [profile, navigate]);
 
   const handleSelectPlan = async () => {
-    if (!selectedPlan) return;
+    if (!selectedPlan) {
+      alert('Please select a plan first');
+      return;
+    }
     
     setLoading(true);
     try {
       if (!user) {
-        // Ensure user is signed in before updating plan
         navigate('/login');
         return;
       }
-      // Update user's plan
-      const { error } = await supabase
-        .from('users')
-        .update({ plan: selectedPlan.id })
-        .eq('id', user.id);
 
-      if (error) throw error;
+      // Verify user is a streamer
+      if (profile?.role !== 'streamer') {
+        throw new Error('Only streamers can select subscription plans');
+      }
+      
+      console.log('Updating plan for streamer:', user.id, 'to:', selectedPlan.id);
+      
+      // Update streamer's plan (removed updated_at)
+      const { data, error } = await supabase
+        .from('users')
+        .update({ 
+          plan: selectedPlan.id
+        })
+        .eq('id', user.id)
+        .eq('role', 'streamer')
+        .select();
+
+      if (error) {
+        console.error('Plan update error:', error);
+        throw error;
+      }
+
+      console.log('Plan updated successfully:', data);
 
       // Navigate to verification upload
       navigate('/verification-upload');
     } catch (error) {
       console.error('Error selecting plan:', error);
-      alert('Failed to select plan. Please try again.');
+      alert(`Failed to select plan: ${error.message || 'Please try again.'}`);
     } finally {
       setLoading(false);
     }
   };
+
+  // Show loading while checking role
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 py-12 px-4 sm:px-6 lg:px-8">
@@ -109,9 +144,6 @@ const SubscriptionPlans = () => {
           >
             {loading ? 'Processing...' : 'Continue to Payment'}
           </button>
-          <p className="text-gray-400 mt-4 text-sm">
-            Mock payment - No actual charges will be made
-          </p>
         </div>
       </div>
     </div>

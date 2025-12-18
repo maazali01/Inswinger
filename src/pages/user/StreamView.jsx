@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { slugify, generateStreamUrl } from '../../lib/utils';
+import { SEO_METADATA } from '../../lib/seo';
 import SEO from '../../components/SEO';
 
 const StreamView = () => {
-  const { id } = useParams();
+  const { slug, streamerSlug } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stream, setStream] = useState(null);
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState([]);
@@ -16,26 +19,47 @@ const StreamView = () => {
 
   const fetchStream = useCallback(async () => {
     try {
-      const { data, error } = await supabase
+      const { data: streams, error } = await supabase
         .from('streams')
         .select(`
           *,
           stream_types(*),
-          users(name)
-        `)
-        .eq('id', id)
-        .single();
+          users(name, id)
+        `);
 
       if (error) throw error;
-      setStream(data);
+
+      // Find stream by matching slug and optionally streamer slug
+      const matchedStream = streams?.find(s => {
+        const streamSlug = slugify(s.stream_types?.title);
+        const userSlug = slugify(s.users?.name);
+        
+        // If streamerSlug is provided, match both
+        if (streamerSlug) {
+          return streamSlug === slug && userSlug === streamerSlug;
+        }
+        
+        // Otherwise just match stream slug
+        return streamSlug === slug;
+      });
+
+      if (!matchedStream) {
+        navigate('/home');
+        return;
+      }
+
+      setStream(matchedStream);
     } catch (error) {
       console.error('Error fetching stream:', error);
+      navigate('/home');
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [slug, streamerSlug, navigate]);
 
   const fetchMessages = useCallback(async () => {
+    if (!stream?.id) return;
+    
     try {
       const { data, error } = await supabase
         .from('chat_messages')
@@ -43,7 +67,7 @@ const StreamView = () => {
           *,
           users(name)
         `)
-        .eq('stream_id', id)
+        .eq('stream_id', stream.id)
         .order('created_at', { ascending: true })
         .limit(100);
 
@@ -52,21 +76,22 @@ const StreamView = () => {
     } catch (error) {
       console.error('Error fetching messages:', error);
     }
-  }, [id]);
+  }, [stream?.id]);
 
   const subscribeToMessages = useCallback(() => {
+    if (!stream?.id) return;
+
     const channel = supabase
-      .channel(`chat:${id}`)
+      .channel(`chat:${stream.id}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'chat_messages',
-          filter: `stream_id=eq.${id}`,
+          filter: `stream_id=eq.${stream.id}`,
         },
         async (payload) => {
-          // Fetch the user name for the new message
           const { data: userData } = await supabase
             .from('users')
             .select('name')
@@ -81,16 +106,21 @@ const StreamView = () => {
     return () => {
       channel.unsubscribe();
     };
-  }, [id]);
+  }, [stream?.id]);
 
   useEffect(() => {
     fetchStream();
-    fetchMessages();
-    const cleanup = subscribeToMessages();
-    return () => {
-      if (typeof cleanup === 'function') cleanup();
-    };
-  }, [id, fetchStream, fetchMessages, subscribeToMessages]);
+  }, [fetchStream]);
+
+  useEffect(() => {
+    if (stream) {
+      fetchMessages();
+      const cleanup = subscribeToMessages();
+      return () => {
+        if (typeof cleanup === 'function') cleanup();
+      };
+    }
+  }, [stream, fetchMessages, subscribeToMessages]);
 
   useEffect(() => {
     scrollToBottom();
@@ -102,19 +132,18 @@ const StreamView = () => {
 
   const sendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || sending) return;
+    if (!newMessage.trim() || sending || !stream?.id) return;
 
     const messageText = newMessage.trim();
     const tempId = `temp-${Date.now()}`;
     
-    // Optimistically add message to UI
     const optimisticMessage = {
       id: tempId,
-      stream_id: id,
+      stream_id: stream.id,
       user_id: user.id,
       message: messageText,
       created_at: new Date().toISOString(),
-      users: { name: user.email.split('@')[0] } // Use email prefix as fallback
+      users: { name: user.email.split('@')[0] }
     };
 
     setMessages((prev) => [...prev, optimisticMessage]);
@@ -125,7 +154,7 @@ const StreamView = () => {
       const { data, error } = await supabase
         .from('chat_messages')
         .insert([{
-          stream_id: id,
+          stream_id: stream.id,
           user_id: user.id,
           message: messageText,
         }])
@@ -137,16 +166,14 @@ const StreamView = () => {
 
       if (error) throw error;
 
-      // Replace optimistic message with real message
       setMessages((prev) => 
         prev.map((msg) => msg.id === tempId ? { ...data, users: data.users } : msg)
       );
     } catch (error) {
       console.error('Error sending message:', error);
       alert('Failed to send message');
-      // Remove optimistic message on error
       setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
-      setNewMessage(messageText); // Restore message text
+      setNewMessage(messageText);
     } finally {
       setSending(false);
     }
@@ -156,7 +183,7 @@ const StreamView = () => {
     "@context": "https://schema.org",
     "@type": "VideoObject",
     "name": stream.stream_types?.title || 'Sports Stream',
-    "description": `Watch ${stream.stream_types?.title} live on Inswinger+`,
+    "description": stream.seo_description || `Watch ${stream.stream_types?.title} live on Inswinger+`,
     "uploadDate": stream.created_at,
     "thumbnailUrl": stream.stream_types?.thumbnail || '/default-thumbnail.jpg',
     "embedUrl": stream.stream_url,
@@ -167,31 +194,45 @@ const StreamView = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
+      <>
+        <SEO
+          title="Loading Stream | Inswinger+"
+          description="Loading stream content"
+          keywords="sports streaming"
+        />
+        <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      </>
     );
   }
 
   if (!stream) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <p className="text-white text-xl">Stream not found</p>
-      </div>
+      <>
+        <SEO
+          title="Stream Not Found | Inswinger+"
+          description="The requested stream could not be found"
+          keywords="sports streaming"
+        />
+        <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+          <p className="text-white text-xl">Stream not found</p>
+        </div>
+      </>
     );
   }
 
+  const streamSeo = SEO_METADATA.streamView(stream.seo_title || stream.stream_types?.title);
+
   return (
     <>
-      {stream && (
-        <SEO
-          title={`${stream.stream_types?.title || 'Stream'} | Watch Live on Inswinger+`}
-          description={`Watch ${stream.stream_types?.title} live. ${stream.stream_types?.sport} streaming in HD quality on Inswinger+.`}
-          keywords={`${stream.stream_types?.sport || 'sports'} live, ${stream.stream_types?.title}, watch ${stream.stream_types?.sport} online, live streaming`}
-          canonical={`/stream/${stream.id}`}
-          schema={schema}
-        />
-      )}
+      <SEO
+        title={stream.seo_title || streamSeo.title}
+        description={stream.seo_description || streamSeo.description}
+        keywords={stream.seo_keywords || streamSeo.keywords}
+        canonical={generateStreamUrl(stream.stream_types?.title, stream.users?.name)}
+        schema={schema}
+      />
       <div className="min-h-screen bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="grid lg:grid-cols-3 gap-6">
@@ -230,7 +271,6 @@ const StreamView = () => {
               <div className="card h-[600px] flex flex-col">
                 <h2 className="text-xl font-bold text-white mb-4">Live Chat</h2>
                 
-                {/* Messages */}
                 <div className="flex-1 overflow-y-auto space-y-2 mb-4 px-2">
                   {messages.length === 0 ? (
                     <p className="text-gray-500 text-sm text-center mt-4">No messages yet. Be the first to chat!</p>
@@ -250,7 +290,6 @@ const StreamView = () => {
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Message Input */}
                 <form onSubmit={sendMessage} className="flex gap-2 mt-2">
                   <input
                     type="text"
