@@ -20,6 +20,7 @@ export default function Sidebar({ className = '' }) {
     { to: '/admin/users', label: 'User Management', icon: MdPerson },
     { to: '/admin/events', label: 'Upcoming Events', icon: MdEvent },
     { to: '/admin/blogs', label: 'Blogs', icon: MdArticle },
+    { to: '/admin/stream-seo', label: 'Stream SEO', icon: MdAutoAwesome }, // New item for Stream SEO
   ];
 
   const streamerItems = [

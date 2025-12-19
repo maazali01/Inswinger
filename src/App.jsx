@@ -34,6 +34,7 @@ import BlogManagement from './pages/admin/BlogManagement';
 import UserManagement from './pages/admin/UserManagement';
 import EventManagement from './pages/admin/EventManagement';
 import StreamManagement from './pages/admin/StreamManagement';
+import StreamSEO from './pages/admin/StreamSEO';
 import Sitemap from './pages/Sitemap';
 
 function AppContent() {
@@ -196,6 +197,14 @@ function AppContent() {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <UserManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/stream-seo"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <StreamSEO />
             </ProtectedRoute>
           }
         />
