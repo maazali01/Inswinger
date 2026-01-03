@@ -198,7 +198,7 @@ const Navbar = () => {
                 <Link to="/login" className="text-gray-300 hover:text-white transition-colors">
                   Login
                 </Link>
-                <Link to="/signup" className="btn-primary text-sm py-2 px-4">
+                <Link to="/signup" className="btn-primary">
                   Sign Up
                 </Link>
               </div>

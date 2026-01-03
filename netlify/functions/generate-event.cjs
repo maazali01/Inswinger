@@ -1,4 +1,4 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 
 exports.handler = async (event) => {
   // Only allow POST requests
@@ -10,7 +10,16 @@ exports.handler = async (event) => {
     };
   }
 
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyBGCU9lsdSWHgZrPduaPYyLb0L0IbvNeTQ';
+  const GROQ_API_KEY = process.env.GROQ_API_KEY;
+
+  if (!GROQ_API_KEY) {
+    console.error('GROQ_API_KEY is not configured');
+    return {
+      statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'API key not configured' })
+    };
+  }
 
   try {
     const { eventTitle } = JSON.parse(event.body);
@@ -28,21 +37,32 @@ exports.handler = async (event) => {
       setTimeout(() => reject(new Error('AI request timeout')), 20000); // 20 second timeout
     });
 
-    // Create Gemini API request using official SDK
-    const geminiPromise = (async () => {
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // Create Groq API request
+    const groqPromise = (async () => {
+      const groq = new Groq({ apiKey: GROQ_API_KEY });
 
-      const prompt = `Write a brief 1-2 sentence exciting description for this sports event: "${eventTitle}". Be engaging and enthusiastic. No markdown.`;
+      const completion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: "You are a sports event promoter who writes exciting, engaging descriptions. Keep it brief and enthusiastic."
+          },
+          {
+            role: "user",
+            content: `Write a brief 1-2 sentence exciting description for this sports event: "${eventTitle}". Be engaging and enthusiastic. No markdown.`
+          }
+        ],
+        model: "llama-3.3-70b-versatile",
+        temperature: 0.8,
+        max_tokens: 100,
+      });
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      return response.text();
+      return completion.choices[0]?.message?.content || '';
     })();
 
     // Race between AI request and timeout
     try {
-      const output = await Promise.race([geminiPromise, timeoutPromise]);
+      const output = await Promise.race([groqPromise, timeoutPromise]);
 
       if (output && output.length > 20) {
         return {

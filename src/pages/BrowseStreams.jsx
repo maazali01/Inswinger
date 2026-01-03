@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
-import { SPORTS_CATEGORIES, PLAN_PRIORITY, PLAN_INFO } from '../../lib/constants';
+import { supabase } from '../lib/supabase';
+import { SPORTS_CATEGORIES } from '../lib/constants';
 import { MdSearch, MdClose, MdVideoLibrary, MdLiveTv, MdPlayArrow, MdAccessTime } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
-import { generateStreamUrl } from '../../lib/utils';
-import { SEO_METADATA } from '../../lib/seo';
-import SEO from '../../components/SEO';
-import { useAuth } from '../../contexts/AuthContext';
+import { generateStreamUrl } from '../lib/utils';
+import { SEO_METADATA } from '../lib/seo';
+import SEO from '../components/SEO';
+import { useAuth } from '../contexts/AuthContext';
 
-const UserDashboard = () => {
+const BrowseStreams = () => {
   const [streams, setStreams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('all');
@@ -33,23 +33,19 @@ const UserDashboard = () => {
 
       if (error) throw error;
       
-      // Sort streams by plan priority (professional > premium > basic)
+      // Show ALL streams but sort by priority: live first, then by plan tier
       const sortedStreams = (data || []).sort((a, b) => {
-        const planA = a.users?.plan || null;
-        const planB = b.users?.plan || null;
-        const priorityA = PLAN_PRIORITY[planA] || 0;
-        const priorityB = PLAN_PRIORITY[planB] || 0;
-        
-        // First sort by plan priority (descending)
-        if (priorityB !== priorityA) {
-          return priorityB - priorityA;
-        }
-        
-        // Then by live status
+        // First by live status
         if (a.is_live !== b.is_live) {
           return a.is_live ? -1 : 1;
         }
-        
+        // Then by plan priority (professional > premium > basic)
+        const planPriority = { professional: 3, premium: 2, basic: 1 };
+        const aPriority = planPriority[a.users?.plan] || 0;
+        const bPriority = planPriority[b.users?.plan] || 0;
+        if (bPriority !== aPriority) {
+          return bPriority - aPriority;
+        }
         // Finally by creation date
         return new Date(b.created_at) - new Date(a.created_at);
       });
@@ -73,20 +69,6 @@ const UserDashboard = () => {
 
   const liveCount = streams.filter(s => s.is_live).length;
 
-  const schema = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    "name": "Live Sports Streams",
-    "description": "Browse and watch live sports streaming events",
-    "numberOfItems": streams.length,
-    "itemListElement": streams.slice(0, 10).map((stream, index) => ({
-      "@type": "ListItem",
-      "position": index + 1,
-      "name": stream.stream_types?.title || 'Sports Stream',
-      "url": `${window.location.origin}${generateStreamUrl(stream.stream_types?.title, stream.users?.name)}`,
-    })),
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -98,40 +80,26 @@ const UserDashboard = () => {
   return (
     <>
       <SEO
-        title={SEO_METADATA.userDashboard.title}
-        description={SEO_METADATA.userDashboard.description}
-        keywords={SEO_METADATA.userDashboard.keywords}
-        canonical="/home"
-        schema={schema}
+        title="Browse Free Streams | Inswinger+"
+        description="Browse all free sports streams on Inswinger+. Watch football, cricket, basketball, and more!"
+        keywords="free sports streams, watch sports free, live sports, sports streaming"
+        canonical="/browse"
       />
       <div className="min-h-screen bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl font-bold text-white">
-              {user ? 'All Live Streams' : 'Browse Streams'}
-            </h1>
-            {!user && (
-              <div className="flex flex-col gap-2">
-                <div className="flex gap-3">
-                  <a href="/login" className="btn-secondary">
-                    Sign In
-                  </a>
-                  <a href="/signup" className="btn-primary">
-                    Sign Up
-                  </a>
-                </div>
-                <p className="text-xs text-gray-500 text-right">
-                  Sign in to access Premium & Professional streams
-                </p>
-              </div>
-            )}
+            <div>
+              <h1 className="text-3xl font-bold text-white">Free Streams</h1>
+              <p className="text-gray-400 text-sm mt-1">Watch basic tier streams for free</p>
+            </div>
+
           </div>
           
           {/* Stats */}
           <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
               <div className="flex items-center justify-between">
-                <p className="text-lg font-bold text-white">Total Streams</p>
+                <p className="text-lg font-bold text-white">Total Free Streams</p>
                 <p className="text-3xl font-bold text-white">{streams.length}</p>
               </div>
             </div>
@@ -217,40 +185,67 @@ const UserDashboard = () => {
           ) : (
             <div className="space-y-3">
               {filteredStreams.map((stream) => {
-                const streamerPlan = stream.users?.plan;
-                const planInfo = PLAN_INFO[streamerPlan];
+                const isPremium = stream.users?.plan === 'premium' || stream.users?.plan === 'professional';
+                const isLocked = isPremium && !user;
                 
                 return (
                   <div
                     key={stream.id}
-                    className="bg-gray-800 border border-gray-700 rounded-lg p-4 sm:p-5 hover:border-blue-500 transition-all cursor-pointer"
-                    onClick={() => navigate(generateStreamUrl(stream.stream_types?.title, stream.users?.name))}
+                    className={`bg-gray-800 border rounded-lg p-4 sm:p-5 transition-all ${
+                      isLocked 
+                        ? 'border-yellow-500/30 cursor-not-allowed opacity-75' 
+                        : 'border-gray-700 hover:border-blue-500 cursor-pointer'
+                    }`}
+                    onClick={() => !isLocked && navigate(generateStreamUrl(stream.stream_types?.title, stream.users?.name))}
                   >
                     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                       <div className="flex items-start gap-4 flex-1 min-w-0">
-                        <div className={`p-3 rounded-lg ${stream.is_live ? 'bg-red-500/10' : 'bg-gray-700/50'}`}>
+                        <div className={`p-3 rounded-lg relative ${
+                          stream.is_live ? 'bg-red-500/10' : 'bg-gray-700/50'
+                        }`}>
                           {stream.is_live ? (
                             <MdLiveTv className="text-2xl text-red-400" />
                           ) : (
                             <MdVideoLibrary className="text-2xl text-gray-400" />
                           )}
+                          {isLocked && (
+                            <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+                              <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0 space-y-2">
-                          <h3 className="text-lg font-semibold text-white truncate">
-                            {stream.stream_types?.title || 'Untitled Stream'}
-                          </h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-semibold text-white truncate">
+                              {stream.stream_types?.title || 'Untitled Stream'}
+                            </h3>
+                            {isLocked && (
+                              <svg className="w-4 h-4 text-yellow-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
                           <div className="flex flex-wrap items-center gap-2 text-sm text-gray-400">
                             <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded text-xs font-medium">
                               {stream.stream_types?.sport || 'Sport'}
                             </span>
                             
                             {/* Plan Badge */}
-                            {planInfo && (
-                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${planInfo.bgColor} ${planInfo.textColor} border ${planInfo.borderColor}`}>
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                </svg>
-                                {planInfo.name}
+                            {stream.users?.plan === 'professional' && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-yellow-500 text-black">
+                                ⭐ PRO
+                              </span>
+                            )}
+                            {stream.users?.plan === 'premium' && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-purple-500 text-white">
+                                💎 PREMIUM
+                              </span>
+                            )}
+                            {stream.users?.plan === 'basic' && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-blue-500 text-white">
+                                FREE
                               </span>
                             )}
                             
@@ -270,11 +265,6 @@ const UserDashboard = () => {
                             <span className="text-xs text-gray-500">
                               Streamer: {stream.users?.name || 'Unknown'}
                             </span>
-                            {stream.stream_url && (
-                              <span className="text-xs text-gray-600">
-                                • Source: {new URL(stream.stream_url).hostname}
-                              </span>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -291,10 +281,25 @@ const UserDashboard = () => {
                           }`}></span>
                           {stream.is_live ? 'LIVE' : 'OFFLINE'}
                         </span>
-                        <button className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors w-full sm:w-auto">
-                          <MdPlayArrow className="text-xl" />
-                          <span className="font-medium">Watch</span>
-                        </button>
+                        {isLocked ? (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate('/login');
+                            }}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-yellow-600 text-black rounded-lg hover:bg-yellow-700 transition-colors w-full sm:w-auto font-semibold"
+                          >
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                            </svg>
+                            <span className="font-medium">Sign In to Watch</span>
+                          </button>
+                        ) : (
+                          <button className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors w-full sm:w-auto">
+                            <MdPlayArrow className="text-xl" />
+                            <span className="font-medium">Watch Free</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -308,4 +313,4 @@ const UserDashboard = () => {
   );
 };
 
-export default UserDashboard;
+export default BrowseStreams;

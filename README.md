@@ -5,8 +5,9 @@ A modern, full-stack sports streaming platform built with React, Vite, Tailwind 
 ## Features
 
 - **Multi-Role System**: User, Streamer, and Admin roles with dedicated dashboards
+- **Public Stream Access**: Anyone can watch live streams without creating an account
 - **Live Streaming**: Stream and watch live sports events across 9+ sports categories
-- **Real-time Chat**: Live chat during streams using Supabase Realtime
+- **Real-time Chat**: Live chat during streams using Supabase Realtime (requires login)
 - **Streamer Verification**: Subscription-based verification system with admin approval
 - **Content Management**: Admin CMS for managing streams, blogs, and events
 - **Sports-Themed UI**: Dynamic gradients, neon highlights, and responsive design
@@ -17,7 +18,7 @@ A modern, full-stack sports streaming platform built with React, Vite, Tailwind 
 - **Styling**: Tailwind CSS
 - **Backend**: Supabase (Auth, Database, Storage, Realtime)
 - **Routing**: React Router v6
-- **Deployment**: Vercel-ready
+- **Deployment**: Netlify-ready (includes serverless functions for AI features)
 
 ## Getting Started
 
@@ -26,7 +27,7 @@ A modern, full-stack sports streaming platform built with React, Vite, Tailwind 
 - Node.js 18+ 
 - A Supabase account (free tier works)
 - Netlify CLI (optional for local testing): `npm install -g netlify-cli`
-- Hugging Face API key (free at huggingface.co)
+- **Groq API key (REQUIRED for AI features)** - Get free key at [console.groq.com](https://console.groq.com)
 
 ### Installation
 
@@ -40,11 +41,11 @@ A modern, full-stack sports streaming platform built with React, Vite, Tailwind 
    - Copy your project URL and anon key
    - Run the SQL commands from `SUPABASE_SETUP.md` in your Supabase SQL Editor
 
-3. **Get Hugging Face API Key**:
-   - Sign up at [huggingface.co](https://huggingface.co)
-   - Go to Settings → Access Tokens
-   - Create a new token with "Read" permission
-   - Copy the token
+3. **Get Groq API Key** (REQUIRED):
+   - Sign up at [console.groq.com](https://console.groq.com)
+   - Go to API Keys section
+   - Create a new API key
+   - Copy the key - you'll need it in the next step
 
 4. **Configure environment variables**:
    ```bash
@@ -54,8 +55,10 @@ A modern, full-stack sports streaming platform built with React, Vite, Tailwind 
    ```
    VITE_SUPABASE_URL=your_supabase_project_url
    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   HUGGINGFACE_API_KEY=your_huggingface_api_key
+   GROQ_API_KEY=your_groq_api_key
    ```
+   
+   ⚠️ **IMPORTANT**: Never commit API keys to Git. The `.env` file is in `.gitignore`.
 
 5. **Start development server**:
    ```bash
@@ -188,10 +191,10 @@ npm run preview
    - Build command: `npm run build`
    - Publish directory: `dist`
    - Functions directory: `netlify/functions`
-4. Add environment variables in Netlify dashboard:
+4. **Add environment variables in Netlify dashboard** (REQUIRED):
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
-   - `HUGGINGFACE_API_KEY`
+   - `GROQ_API_KEY` ⚠️ **Must be configured for AI features to work**
 5. Deploy
 
 ### Manual Deployment via Netlify CLI
@@ -204,12 +207,15 @@ npm run netlify:deploy
 ```
 
 ### Environment Variables for Production
-In Netlify dashboard, add these environment variables:
+
+⚠️ **CRITICAL**: In Netlify dashboard, add these environment variables:
 ```
 VITE_SUPABASE_URL=your_production_supabase_url
 VITE_SUPABASE_ANON_KEY=your_production_anon_key
-HUGGINGFACE_API_KEY=your_production_huggingface_api_key
+GROQ_API_KEY=your_production_groq_api_key
 ```
+
+**Without `GROQ_API_KEY`, AI features (blog generation, event descriptions, SEO) will not work.**
 
 ## Customization
 
@@ -246,6 +252,13 @@ Update `tailwind.config.js` for custom colors and gradients.
 ### Authentication Issues
 - Confirm Supabase URL and anon key in `.env`
 - Check if user profile exists in `users` table
+
+## Security Notes
+
+- **Never commit API keys** to Git. Use environment variables only.
+- The `.env` file is excluded from Git via `.gitignore`.
+- GitHub push protection will block commits containing exposed secrets.
+- Always use environment variables for sensitive data.
 
 ## Contributing
 

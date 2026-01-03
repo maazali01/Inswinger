@@ -55,6 +55,40 @@ export const SUBSCRIPTION_PLANS = [
   }
 ];
 
+// Plan priority for stream ordering (higher number = higher priority)
+export const PLAN_PRIORITY = {
+  professional: 3,
+  premium: 2,
+  basic: 1,
+  null: 0, // For streamers without plans
+  undefined: 0
+};
+
+// Plan display info
+export const PLAN_INFO = {
+  professional: {
+    name: 'Professional',
+    color: 'from-yellow-500 to-orange-500',
+    textColor: 'text-yellow-400',
+    bgColor: 'bg-yellow-500/20',
+    borderColor: 'border-yellow-500/30'
+  },
+  premium: {
+    name: 'Premium',
+    color: 'from-purple-500 to-pink-500',
+    textColor: 'text-purple-400',
+    bgColor: 'bg-purple-500/20',
+    borderColor: 'border-purple-500/30'
+  },
+  basic: {
+    name: 'Basic',
+    color: 'from-blue-500 to-cyan-500',
+    textColor: 'text-blue-400',
+    bgColor: 'bg-blue-500/20',
+    borderColor: 'border-blue-500/30'
+  }
+};
+
 export const MOCK_STREAMS = [
   {
     id: 'mock-1',

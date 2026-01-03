@@ -2,7 +2,6 @@ import { supabase } from './supabase';
 
 // Helper function to detect if we're in production (Netlify) or development
 const isProduction = import.meta.env.PROD;
-const isDev = import.meta.env.DEV;
 
 // In development, check if we're running on Netlify Dev (port 8888) or regular Vite (port 5173)
 const getAPIBase = () => {
@@ -21,6 +20,9 @@ const getAPIBase = () => {
 
 const API_BASE = getAPIBase();
 
+/**
+ * Generate blog content using Groq AI
+ */
 export const generateBlogContent = async (title) => {
   try {
     const response = await fetch(`${API_BASE}/generate-blog`, {
@@ -34,14 +36,12 @@ export const generateBlogContent = async (title) => {
     if (!response.ok) {
       let errorMessage = 'Failed to generate content';
       
-      // Clone the response before reading it
       const responseClone = response.clone();
       
       try {
         const errorData = await response.json();
         errorMessage = errorData.error || errorMessage;
       } catch (e) {
-        // If JSON parsing fails, try text on the cloned response
         try {
           const text = await responseClone.text();
           if (text.includes('Not Found') || response.status === 404) {
@@ -69,6 +69,9 @@ export const generateBlogContent = async (title) => {
   }
 };
 
+/**
+ * Generate event description using Groq AI
+ */
 export const generateEventDescription = async (eventTitle) => {
   try {
     const response = await fetch(`${API_BASE}/generate-event`, {
@@ -82,14 +85,12 @@ export const generateEventDescription = async (eventTitle) => {
     if (!response.ok) {
       let errorMessage = 'Failed to generate description';
       
-      // Clone the response before reading it
       const responseClone = response.clone();
       
       try {
         const errorData = await response.json();
         errorMessage = errorData.error || errorMessage;
       } catch (e) {
-        // If JSON parsing fails, try text on the cloned response
         try {
           const text = await responseClone.text();
           if (text.includes('Not Found') || response.status === 404) {
@@ -118,7 +119,7 @@ export const generateEventDescription = async (eventTitle) => {
 };
 
 /**
- * Get cached SEO or generate new one
+ * Get cached SEO or generate new one using Groq AI
  */
 export const generateSEOMetadata = async ({ pageType, content, sport, title }) => {
   try {
@@ -130,7 +131,6 @@ export const generateSEOMetadata = async ({ pageType, content, sport, title }) =
         case 'stream':
         case 'blog':
         case 'event':
-          // Use slugified title as identifier
           return title ? title.toLowerCase().replace(/[^a-z0-9]+/g, '-') : pageType;
         default:
           return pageType;
@@ -198,7 +198,6 @@ export const generateSEOMetadata = async ({ pageType, content, sport, title }) =
       console.log('SEO cached successfully');
     } catch (cacheWriteError) {
       console.warn('Failed to cache SEO:', cacheWriteError);
-      // Continue anyway, SEO generation succeeded
     }
 
     return data;

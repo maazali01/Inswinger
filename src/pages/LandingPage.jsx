@@ -5,7 +5,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { SEO_METADATA } from '../lib/seo';
 import SEO from '../components/SEO';
 import { FaPlay, FaCalendar, FaNewspaper, FaArrowRight, FaTrophy, FaUsers } from 'react-icons/fa';
+import { MdVideoLibrary } from 'react-icons/md';
 import { format } from 'date-fns';
+import { PLAN_PRIORITY } from '../lib/constants';
 
 const LandingPage = () => {
   const { user } = useAuth();
@@ -15,6 +17,7 @@ const LandingPage = () => {
   const [upcomingStreams, setUpcomingStreams] = useState([]);
   const [blogs, setBlogs] = useState([]);
   const [events, setEvents] = useState([]);
+  const [streams, setStreams] = useState([]);
   const [streamsLoading, setStreamsLoading] = useState(true);
   const [blogsLoading, setBlogsLoading] = useState(true);
   const [eventsLoading, setEventsLoading] = useState(true);
@@ -33,22 +36,40 @@ const LandingPage = () => {
         .select(`
           *,
           stream_types(*),
-          users(name)
+          users(name, plan)
         `)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(50);
 
       if (error) throw error;
 
       const now = new Date();
-      const live = data?.filter(s => s.is_live) || [];
-      const upcoming = data?.filter(s => 
+      
+      // For landing page stats, show all streams count
+      const allStreams = data || [];
+      const basicStreams = allStreams.filter(s => s.users?.plan === 'basic');
+      
+      // Show ALL basic streams (live and offline)
+      const live = basicStreams.filter(s => s.is_live);
+      const offline = basicStreams.filter(s => !s.is_live);
+      
+      // Combine: live first, then offline
+      const allBasicStreams = [...live, ...offline];
+
+      setLiveStreams(allBasicStreams.slice(0, 6));
+      
+      // For stats, count all streams
+      const allLiveCount = allStreams.filter(s => s.is_live).length;
+      
+      // Store total count for display
+      setStreams(allStreams);
+      
+      // Still show upcoming for context
+      const upcoming = basicStreams.filter(s => 
         !s.is_live && 
         s.stream_types?.start_time && 
         new Date(s.stream_types.start_time) > now
-      ) || [];
-
-      setLiveStreams(live.slice(0, 3));
+      );
       setUpcomingStreams(upcoming.slice(0, 3));
     } catch (error) {
       console.error('Error fetching streams:', error);
@@ -120,7 +141,7 @@ const LandingPage = () => {
       
       <div className="min-h-screen bg-gray-900">
         {/* Hero Section */}
-        <div className="bg-gradient-to-r from-blue-900 via-purple-900 to-pink-900 py-20">
+        {/* <div className="bg-gradient-to-r from-blue-900 via-purple-900 to-pink-900 py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">
               Watch Live Sports <span className="text-yellow-400">Anywhere</span>
@@ -148,76 +169,56 @@ const LandingPage = () => {
               </div>
             )}
           </div>
-        </div>
+        </div> */}
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-16">
-          {/* Live Streams Section */}
+          {/* Free Streams Section - Simple CTA */}
           <section>
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-3">
-                <FaPlay className="text-3xl text-red-500" />
-                <h2 className="text-3xl font-bold text-white">Live Now</h2>
+            <div className="text-center py-20">
+              <div className="mb-8">
+                <FaPlay className="text-6xl text-red-500 mx-auto mb-6" />
+                <h2 className="text-4xl font-bold text-white mb-4">Watch Free Sports Streams</h2>
+                <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-8">
+                  Browse our collection of free sports streams. No sign-up required to watch basic tier content!
+                </p>
               </div>
-              {user && (
-                <Link to="/home" className="text-blue-400 hover:text-blue-300 flex items-center gap-2">
-                  View All <FaArrowRight />
-                </Link>
-              )}
-            </div>
-            {streamsLoading ? (
-              <div className="text-gray-400">Loading live streams...</div>
-            ) : liveStreams.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {liveStreams.map((stream) => (
-                  <div key={stream.id} className="card group hover:shadow-2xl transition-all duration-300">
-                    <div className="relative w-full h-48 bg-black rounded-lg overflow-hidden mb-4">
-                      <div className="absolute top-2 left-2 z-10">
-                        <span className="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-2 animate-pulse">
-                          <span className="w-2 h-2 bg-white rounded-full"></span>
-                          LIVE
-                        </span>
-                      </div>
-                      <img 
-                        src={stream.stream_types?.thumbnail || '/vite.svg'} 
-                        alt={stream.stream_types?.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        onError={(e) => {
-                          e.target.src = '/vite.svg';
-                        }}
-                      />
-                    </div>
-                    <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-blue-400 transition-colors">
-                      {stream.stream_types?.title || 'Untitled Stream'}
-                    </h3>
-                    <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
-                      <span className="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-xs">
-                        {stream.stream_types?.sport}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <FaUsers className="text-xs" />
-                        {stream.users?.name}
-                      </span>
-                    </div>
-                    {user ? (
-                      <Link 
-                        to={generateStreamUrl(stream.stream_types?.title, stream.users?.name)} 
-                        className="btn-primary text-sm w-full"
-                      >
-                        <FaPlay className="inline mr-2" /> Watch Now
-                      </Link>
-                    ) : (
-                      <Link to="/signup" className="btn-primary text-sm w-full">
-                        Sign Up to Watch
-                      </Link>
-                    )}
+
+              {/* Stream Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-12">
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                  <div className="text-3xl font-bold text-white mb-2">
+                    {streamsLoading ? '...' : streams.length}
                   </div>
-                ))}
+                  <div className="text-gray-400">Total Streams</div>
+                </div>
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                  <div className="text-3xl font-bold text-red-400 mb-2">
+                    {streamsLoading ? '...' : streams.filter(s => s.is_live).length}
+                  </div>
+                  <div className="text-gray-400">Live Now</div>
+                </div>
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                  <div className="text-3xl font-bold text-blue-400 mb-2">
+                    {streamsLoading ? '...' : liveStreams.length}
+                  </div>
+                  <div className="text-gray-400">Free Streams</div>
+                </div>
               </div>
-            ) : (
-              <div className="text-center py-12 text-gray-400">
-                No live streams at the moment. Check back soon!
-              </div>
-            )}
+
+              {/* Browse Button */}
+              <Link 
+                to="/browse" 
+                className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-lg font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
+              >
+                <MdVideoLibrary className="text-2xl" />
+                Browse Free Streams
+                <FaArrowRight />
+              </Link>
+
+              <p className="text-gray-500 text-sm mt-6">
+                Want access to premium streams? <Link to="/signup" className="text-blue-400 hover:text-blue-300">Sign up for free</Link>
+              </p>
+            </div>
           </section>
 
           {/* Latest Blogs Section */}

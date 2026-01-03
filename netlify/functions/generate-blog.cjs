@@ -1,4 +1,4 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -9,7 +9,16 @@ exports.handler = async (event) => {
     };
   }
 
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyBGCU9lsdSWHgZrPduaPYyLb0L0IbvNeTQ';
+  const GROQ_API_KEY = process.env.GROQ_API_KEY;
+
+  if (!GROQ_API_KEY) {
+    console.error('GROQ_API_KEY is not configured');
+    return {
+      statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'API key not configured' })
+    };
+  }
 
   try {
     const { title } = JSON.parse(event.body);
@@ -27,12 +36,19 @@ exports.handler = async (event) => {
       setTimeout(() => reject(new Error('AI request timeout')), 25000);
     });
 
-    // Create Gemini API request using official SDK
-    const geminiPromise = (async () => {
-      const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // Create Groq API request
+    const groqPromise = (async () => {
+      const groq = new Groq({ apiKey: GROQ_API_KEY });
 
-      const prompt = `Write a well-structured sports blog post about: "${title}". 
+      const completion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: "You are a professional sports writer who creates engaging, informative blog posts. Write in plain text without markdown formatting."
+          },
+          {
+            role: "user",
+            content: `Write a well-structured sports blog post about: "${title}". 
 
 Requirements:
 - Include 2-3 section headings (use simple text headings, not markdown)
@@ -50,15 +66,19 @@ Key Highlights
 Content about highlights here...
 
 What to Expect
-Content about expectations here...`;
+Content about expectations here...`
+          }
+        ],
+        model: "llama-3.3-70b-versatile",
+        temperature: 0.7,
+        max_tokens: 500,
+      });
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      return response.text();
+      return completion.choices[0]?.message?.content || '';
     })();
 
     try {
-      const output = await Promise.race([geminiPromise, timeoutPromise]);
+      const output = await Promise.race([groqPromise, timeoutPromise]);
 
       if (output && output.length > 50) {
         return {

@@ -1,11 +1,19 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 
 export const handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyBGCU9lsdSWHgZrPduaPYyLb0L0IbvNeTQ';
+  const GROQ_API_KEY = process.env.GROQ_API_KEY;
+
+  if (!GROQ_API_KEY) {
+    console.error('GROQ_API_KEY is not configured');
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'API key not configured' })
+    };
+  }
 
   try {
     const { slug, title, sport } = JSON.parse(event.body);
@@ -19,12 +27,6 @@ export const handler = async (event) => {
 
     const cleanTitle = title || slug.replace(/-/g, ' ');
     const cleanSport = sport || 'Sports';
-
-    // Check if API key exists
-    if (!GEMINI_API_KEY) {
-      console.warn('GEMINI_API_KEY not found, using fallback SEO');
-      return generateFallbackSEO(slug, cleanTitle, cleanSport);
-    }
 
     const prompt = `Generate SEO metadata for a live sports stream page on Inswinger+ (sports streaming platform).
 
@@ -55,33 +57,41 @@ Format the response as JSON:
         setTimeout(() => reject(new Error('AI request timeout')), 20000);
       });
 
-      const geminiPromise = (async () => {
-        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+      const groqPromise = (async () => {
+        const groq = new Groq({ apiKey: GROQ_API_KEY });
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
+        const completion = await groq.chat.completions.create({
+          messages: [
+            {
+              role: "system",
+              content: "You are an SEO expert who generates optimized metadata for sports streaming pages. Always respond with valid JSON only."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          model: "llama-3.3-70b-versatile",
+          temperature: 0.5,
+          max_tokens: 300,
+          response_format: { type: "json_object" }
+        });
 
-        console.log('Gemini API response received');
+        const responseText = completion.choices[0]?.message?.content || '';
+        console.log('Groq API response received');
 
-        // Extract JSON from response
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const seoData = JSON.parse(jsonMatch[0]);
-          
-          // Validate the data
-          if (!seoData.title || !seoData.description || !seoData.keywords) {
-            throw new Error('Incomplete SEO data from AI');
-          }
-
-          return seoData;
+        // Parse JSON from response
+        const seoData = JSON.parse(responseText);
+        
+        // Validate the data
+        if (!seoData.title || !seoData.description || !seoData.keywords) {
+          throw new Error('Incomplete SEO data from AI');
         }
 
-        throw new Error('No JSON found in response');
+        return seoData;
       })();
 
-      const seoData = await Promise.race([geminiPromise, timeoutPromise]);
+      const seoData = await Promise.race([groqPromise, timeoutPromise]);
 
       console.log('Successfully generated AI-powered SEO');
 
@@ -94,7 +104,7 @@ Format the response as JSON:
         body: JSON.stringify(seoData),
       };
     } catch (apiError) {
-      console.error('Gemini API error:', apiError.message);
+      console.error('Groq API error:', apiError.message);
       console.log('Using fallback SEO generation');
       return generateFallbackSEO(slug, cleanTitle, cleanSport);
     }

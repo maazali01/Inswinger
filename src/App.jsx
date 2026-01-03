@@ -36,6 +36,7 @@ import EventManagement from './pages/admin/EventManagement';
 import StreamManagement from './pages/admin/StreamManagement';
 import StreamSEO from './pages/admin/StreamSEO';
 import Sitemap from './pages/Sitemap';
+import BrowseStreams from './pages/BrowseStreams';
 
 function AppContent() {
   const location = useLocation();
@@ -48,6 +49,9 @@ function AppContent() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        
+        {/* Public browse page for free streams */}
+        <Route path="/browse" element={<BrowseStreams />} />
         
         {/* Streamer onboarding routes - require auth but not full verification */}
         <Route
@@ -75,31 +79,13 @@ function AppContent() {
           }
         />
 
-        {/* User Routes */}
-        <Route
-          path="/home"
-          element={
-            <ProtectedRoute allowedRoles={['user']}>
-              <UserDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/stream/:streamerSlug/:slug"
-          element={
-            <ProtectedRoute allowedRoles={['user']}>
-              <StreamView />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/stream/:slug"
-          element={
-            <ProtectedRoute allowedRoles={['user']}>
-              <StreamView />
-            </ProtectedRoute>
-          }
-        />
+        {/* User Routes - /home is now public */}
+        <Route path="/home" element={<UserDashboard />} />
+        
+        {/* Stream routes are completely public - no authentication required */}
+        <Route path="/stream/:streamerSlug/:slug" element={<StreamView />} />
+        <Route path="/stream/:slug" element={<StreamView />} />
+        
         <Route
           path="/blogs"
           element={
